@@ -5,8 +5,8 @@
 # 用法:  bash start-prod.sh [端口]
 # 默认:  bash start-prod.sh 3000
 #
-# 依赖:  前端已构建(frontend-local/dist) + 后端已打包(backend/sub-store.min.js)
-# 构建:  见 VPS-DEPLOY.md
+# 依赖:  前端已构建(frontend-local/dist) + 后端已打包(backend/ 含 dist/sub-store.bundle.js)
+# 构建:  见 deploy/README.md
 # ============================================================
 
 set -euo pipefail
@@ -24,8 +24,14 @@ else
     FRONTEND_DIST="$FRONTEND_SRC"
 fi
 
-if [ ! -f "$BACKEND_DIR/sub-store.min.js" ]; then
-    echo "[ERROR] 未找到 $BACKEND_DIR/sub-store.min.js，请先在 backend 目录: pnpm bundle:esbuild"
+# 生产入口优先用官方自包含 bundle；若无则退回 sub-store.min.js
+if [ -f "$BACKEND_DIR/dist/sub-store.bundle.js" ]; then
+    RUN_ENTRY="dist/sub-store.bundle.js"
+elif [ -f "$BACKEND_DIR/sub-store.min.js" ]; then
+    RUN_ENTRY="sub-store.min.js"
+else
+    echo "[ERROR] 未找到后端可运行文件。请先构建: cd backend && pnpm bundle:esbuild"
+    echo "        (产物为 dist/sub-store.bundle.js 或 sub-store.min.js)"
     exit 1
 fi
 if [ ! -d "$FRONTEND_SRC" ]; then
@@ -44,4 +50,4 @@ export SUB_STORE_FRONTEND_PATH="$FRONTEND_DIST"
 export SUB_STORE_CORS_ALLOWED_ORIGINS="${SUB_STORE_CORS_ALLOWED_ORIGINS:-}"
 
 cd "$BACKEND_DIR"
-exec node sub-store.min.js
+exec node "$RUN_ENTRY"

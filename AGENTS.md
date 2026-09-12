@@ -14,7 +14,7 @@
   - `backend/` — Node.js 后端（Express），负责订阅转换、节点解析、API
   - `frontend-local/` — 官方前端 `Sub-Store-Front-End`（Vue 3 + Vite），已并入本仓库
   - `start.sh` / `start-prod.sh` — 前后端合并部署启动脚本
-  - `VPS-DEPLOY.md` — VPS 部署指南
+  - `deploy/README.md` — 完整 VPS 部署手册（服务器不编译，GitHub Actions 构建发布包）
 
 ## 2. 分支策略（最重要）
 
@@ -80,10 +80,16 @@ git push origin release
 
 ## 6. 部署 / 发布产物
 
+> 完整手册见 [`deploy/README.md`](deploy/README.md)。
+
+- **发布介质**：打版本 tag（`vX.Y.Z`）→ GitHub Actions 自动构建好发布包
+  `.github/workflows/release.yml`，并上传到 GitHub Release。
+- **服务器绝不编译**：只下载 `sub-store-server-<tag>.tar.gz` 解压 + systemd/pm2 运行。
+  运行入口是后端自包含文件：`node backend/dist/sub-store.bundle.js`。
 - 本地开发：`bash start.sh [端口]`（默认端口 3000，含前端热重载）
-- 生产：`bash start-prod.sh [端口]`（需先构建）
+- 生产（如需本地直接跑）：`bash start-prod.sh [端口]`（前端需先构建）
 - 前端构建：`cd frontend-local && pnpm build`（已内置 `VITE_API_URL='/'` 同源配置）
-- 详细见 `VPS-DEPLOY.md`
+- 部署细节见 `deploy/README.md`
 
 ## 7. 注意事项
 

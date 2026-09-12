@@ -1,0 +1,117 @@
+# =============================================================================
+# Sub-Store 发布构建 Workflow
+# -----------------------------------------------------------------------------
+# 目的：在打出版本 tag（vX.Y.Z）时，于 GitHub Actions 中完成前后端全部构建，
+#       生成「服务器可直接运行、无需编译」的完整发布包，并上传到 GitHub Release。
+#
+# 设计原则：
+#   - 服务器绝对不需要 pnpm / node 编译，只需解压 + systemd/pm2 运行。
+#   - 发布包内含：后端运行入口(dist/sub-store.bundle.js，自包含) +
+#                 后端脚本产品(dist/*.min.js) + 前端静态资源(frontend/)。
+#   - 顺带生成 checksums.txt 供服务器校验完整性。
+# ---------------------------------------------------------------------
+# 用法：
+#   1. 在 `release` 分支提交代码并推送。
+#   2. 打 tag： git tag -a vX.Y.Z -m "vX.Y.Z"; git push origin vX.Y.Z
+#   3. 本 workflow 自动构建并发布到 GitHub Release。
+# =============================================================================
+
+name: build & release server tarball
+
+on:
+  # 仅在打版本 tag (v...) 时发布
+  push:
+    tags:
+      - "v*"
+  # 允许手动触发，便于调试
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # 始终基于 release 分支构建发布包（release 是唯一开发/发布分支）
+          ref: "release"
+
+      - name: Resolve release tag
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".node-version"
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      # ---------------- 后端构建 ----------------
+      - name: Install backend deps (build)
+        run: |
+          cd backend
+          pnpm i --no-frozen-lockfile
+
+      - name: Bundle backend (esbuild production)
+        run: |
+          cd backend
+          # 生成 dist/sub-store.bundle.js (Node 自包含入口) 及脚本产品
+          pnpm bundle:esbuild
+
+      # ---------------- 前端构建 ----------------
+      - name: Install front deps (build)
+        run: |
+          cd frontend-local
+          pnpm i --no-frozen-lockfile
+
+      - name: Build front (production)
+        env:
+          NODE_ENV: production
+        run: |
+          cd frontend-local
+          pnpm build
+          # 前端 dist 将在打包步骤统一拷贝
+
+      # ---------------- 构建完成，布局：backend(可运行后端) + frontend(前端静态) -------------
+
+      - name: Package release tarball
+        run: |
+          set -euxo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          STAGE="sub-store-server-${TAG}"
+          mkdir -p "${STAGE}"
+
+          # 后端：只需 dist 产物(bundle 自包含，无需 node_modules)
+          mkdir -p "${STAGE}/backend/dist"
+          cp backend/dist/sub-store.bundle.js "${STAGE}/backend/dist/"
+          cp backend/dist/runtime-manifest.json "${STAGE}/backend/dist/" 2>/dev/null || true
+          cp backend/dist/sub-store-0.min.js "${STAGE}/backend/dist/" 2>/dev/null || true
+          cp backend/dist/sub-store-1.min.js "${STAGE}/backend/dist/" 2>/dev/null || true
+          cp backend/dist/sub-store-parser.loon.min.js "${STAGE}/backend/dist/" 2>/dev/null || true
+          cp backend/dist/proxy-utils.esm.mjs "${STAGE}/backend/dist/" 2>/dev/null || true
+
+          # 前端：把 frontend-local/dist 作为静态资源放入 frontend/
+          cp -R frontend-local/dist "${STAGE}/frontend"
+
+          # 打包
+          tar -czf "${STAGE}.tar.gz" "${STAGE}"
+
+          # 校验和
+          sha256sum "${STAGE}.tar.gz" > checksums.txt
+
+          ls -lh "${STAGE}.tar.gz" checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Sub-Store ${{ steps.tag.outputs.tag }}
+          body: |
+            Sub-Store 服务器端发布包。
+            - 服务器只需解压 + `systemd`/`pm2` 运行，无需编译。
+            - 详见仓库 `deploy/README.md` 部署手册。
+          files: |
+            sub-store-server-${{ steps.tag.outputs.tag }}.tar.gz
+            checksums.txt

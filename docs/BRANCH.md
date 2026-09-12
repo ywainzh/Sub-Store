@@ -137,7 +137,7 @@ GH_TOKEN="$GITHUB_TOKEN_YWAINZH" gh api repos/ywainzh/Sub-Store ...
 ## 六、部署（发布到 release 后）
 
 - 本地开发 / 测试：`bash start.sh`
-- VPS 生产部署：见 `VPS-DEPLOY.md`（`bash start-prod.sh`，同步用 git fetch + checkout release）
+- VPS 生产部署：见 `deploy/README.md`（下载 GitHub Release 发布包 → systemd/pm2 运行，服务器不编译）
 
 发布到 GitHub 的 Release / Tag 时，统一基于 `release` 分支：
 ```bash
