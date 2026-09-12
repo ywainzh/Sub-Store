@@ -108,5 +108,28 @@ git push origin release
 - **给其他 agent 用**：通过 REST API `POST /api/subs`（创建）、`PATCH /api/sub/:name`（改）、
   `DELETE /api/sub/:name`（删）、`POST /api/preview/sub`（验证解析）。
 - **两种来源**：本地单节点用 `source:"local"` + `content`；远程 SJIP 订阅用 `source:"url"` + `url`。
-- **三个注意**：① VLESS/Hy2 节点本地用 `content` 非 `url`；② UUID 必须与服务器
-  xray 一致否则超时；③ REALITY 目标必须 `mihomo`(ClashMeta)。
+- **两个注意本地协议**：① 带规则的分享配置作为 `file`（mihomoConfig, sourceType:`local`）；
+  ② 分发节点来自 `collection` + `Add Proxies From Subscription Operator`。
+- VLESS/Hy2节点本地用 `content` 非 `url`；REALITY 必须 `mihomo` target。
+- UUID 必须与服务器 xray 的 `clients[0].id` 一致（错一位即超时）。
+
+## 9. Clash 分流规则配置（分享配置 file + 动态节点分组）
+
+> ⚠️ 这是当前你在用的主方案（Clash Verge「Clash-Full」+ 小火箭「Shadowrocket-Nodes」）。
+> 完整技术手册见 **[`docs/CLASH-ROUTING.md`](docs/CLASH-ROUTING.md)**。
+
+- **要带的完整分流配置** = Sub-Store 里的一个 `mihomoConfig` **file**，`content` 是完整 Clash yaml
+  （`mode: rule`, proxy-groups, rules, rule-providers）。
+  **必须 `sourceType:"local"`**（`none` 会丢 content）。
+- **节点不写死**：文件挂 `process`（`Add Proxies From Subscription Operator`），
+  把 `collection`「大海的海」的当前节点**动态写入 `proxies` 顶层**。
+- **分组动态 + 自动测速**：proxy-groups 用 `proxy-providers.ocean`（HTTP 指向共享订阅），
+  分区组 `type: select` + `use:[ocean]` + `filter`(正则按前缀归区)，
+  并把 `自动-{地区}`(`url-test`) 放为首项 → 自动选最低延迟；其余节点手动可选。
+- **分享链接**：先 `POST /api/token`（`payload:{type:file,name}`）→ `/share/file/<name>?token=<T>`。
+  改名/删除文件后旧 token 失效需重建。
+- **给 Agent 的踩坑**（详见文档 §4）：
+  ① proxy-group 用 `use`+`filter`，不要 `include`（mihomo 必报 missing proxies）；
+  ② health-check 必须 `enable: true`；
+  ③ `select`=手动、`url-test`=自动；
+  ④ 节点名不带 emoji/后缀，按前缀 `US/JP/TW/SG/...` 过滤。
