@@ -28,6 +28,9 @@ on:
 
 jobs:
   build-and-release:
+    # 显式授权 GITHUB_TOKEN 可写入 Contents，以创建 Release 并上传资产
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
