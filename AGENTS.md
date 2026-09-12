@@ -97,3 +97,16 @@ git push origin release
   `backend/sub-store.min.js` 等运行数据/构建产物。
 - `backend/root.json` 与 `backend/sub-store.json` 是你的私有订阅数据，**不得提交**。
 - 提交信息：单行、简要说明变更内容（中文或英文均可）。
+
+## 8. 订阅管理 / 导入（Sub-Store API）
+
+> 完整技术手册（含 API 端点、URL 编码、local/url 两种类型、验证方法、mihomo 导出）
+> 见 **[`docs/SUB-IMPORT.md`](docs/SUB-IMPORT.md)**。
+
+- **线上服务**：生产 Sub-Store 部署于甲骨文 VPS，公网 `https://sub-store.0222999.xyz`，
+  后端反代到 `127.0.0.1:3000`（后端无鉴权，数据存 `backend/sub-store.json`，勿手改文件）。
+- **给其他 agent 用**：通过 REST API `POST /api/subs`（创建）、`PATCH /api/sub/:name`（改）、
+  `DELETE /api/sub/:name`（删）、`POST /api/preview/sub`（验证解析）。
+- **两种来源**：本地单节点用 `source:"local"` + `content`；远程 SJIP 订阅用 `source:"url"` + `url`。
+- **三个注意**：① VLESS/Hy2 节点本地用 `content` 非 `url`；② UUID 必须与服务器
+  xray 一致否则超时；③ REALITY 目标必须 `mihomo`(ClashMeta)。
