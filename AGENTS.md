@@ -120,20 +120,20 @@ git push origin release
 ## 9. Clash 分流规则配置（分享配置 file + 动态节点分组）
 
 > ⚠️ 这是当前你在用的主方案（Clash Verge「Clash-Full」+ 小火箭「Shadowrocket-Nodes」）。
-> 完整技术手册见 **[`docs/CLASH-ROUTING.md`](docs/CLASH-ROUTING.md)**。
+> 完整技术手册见 **[`docs/CLASH-ROUTING.md`](docs/CLASH-ROUTING.md)**；当前分组与刷新方式以 **[`docs/SHARE-REFRESH.md`](docs/SHARE-REFRESH.md)** 为准。
 
 - **要带的完整分流配置** = Sub-Store 里的一个 `mihomoConfig` **file**，`content` 是完整 Clash yaml
   （`mode: rule`, proxy-groups, rules, rule-providers）。
   **必须 `sourceType:"local"`**（`none` 会丢 content）。
 - **节点不写死**：文件挂 `process`（`Add Proxies From Subscription Operator`），
   把 `collection`「大海的海」的当前节点**动态写入 `proxies` 顶层**。
-- **分组动态 + 自动测速**：proxy-groups 用 `proxy-providers.ocean`（HTTP 指向共享订阅），
-  分区组 `type: select` + `use:[ocean]` + `filter`(正则按前缀归区)，
-  并把 `自动-{地区}`(`url-test`) 放为首项 → 自动选最低延迟；其余节点手动可选。
+- **分组动态 + 自动测速**：proxy-groups 用 `include-all-proxies: true` + `filter` 从本次分享的顶层 `proxies` 选入节点，
+  并把 `自动-{地区}`(`url-test`) 放为分区 `select` 组首项；其余节点手动可选。
+  自动组设置 `empty-fallback: REJECT`，无可用节点时拒绝连接。不要再用 HTTP `ocean` 重复拉取同一组合，否则客户端独立缓存会使启停结果滞后。
 - **分享链接**：先 `POST /api/token`（`payload:{type:file,name}`）→ `/share/file/<name>?token=<T>`。
   改名/删除文件后旧 token 失效需重建。
 - **给 Agent 的踩坑**（详见文档 §4）：
-  ① proxy-group 用 `use`+`filter`，不要 `include`（mihomo 必报 missing proxies）；
-  ② health-check 必须 `enable: true`；
+  ① 顶层动态节点用 `include-all-proxies`+`filter`，不要使用无效的 `include` 字段；
+  ② `url-test` 保留测速 URL、interval、tolerance；刷新完整分享后应检查内核中的实际分组；
   ③ `select`=手动、`url-test`=自动；
-  ④ 节点名不带 emoji/后缀，按前缀 `US/JP/TW/SG/...` 过滤。
+  ④ 地区过滤正则应覆盖实际节点名称中的国家代码和中文地区名。
