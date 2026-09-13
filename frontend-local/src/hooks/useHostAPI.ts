@@ -9,6 +9,20 @@ import { isValidShareBaseUrl, normalizeShareBaseUrl } from '@/utils/share';
 const lsKey = 'hostAPI';
 const defaultAPI = import.meta.env.VITE_API_URL || 'https://sub.store';
 
+async function probeBackend(url: string, options: { signal?: AbortSignal } = {}) {
+  try {
+    return await axios.get<{ status: 'success' | 'failed' }>(`${url}/api/auth/status`, { ...options, withCredentials: true });
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return axios.get<{ status: 'success' | 'failed' }>(`${url}/api/utils/env`, options);
+    }
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      return { data: { status: 'success' as const } };
+    }
+    throw error;
+  }
+}
+
 const normalizeHostApiUrl = (url: string) => {
   return url.replace(/\/$/, '');
 };
@@ -146,9 +160,7 @@ export const useHostAPI = () => {
       }
 
       try {
-        const res = await axios.get<{ status: 'success' | 'failed' }>(
-          url + '/api/utils/env'
-        );
+        const res = await probeBackend(url);
         if (res?.data?.status === 'success') {
           apis.value.push(api);
           return true;
@@ -327,10 +339,7 @@ export const useHostAPI = () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), localStorage.getItem('timeout') ? parseInt(localStorage.getItem('timeout') as string, 10) : 3000); // 3秒超时
 
-            const res = await axios.get<{ status: 'success' | 'failed' }>(
-              url + '/api/utils/env',
-              { signal: controller.signal }
-            );
+            const res = await probeBackend(url, { signal: controller.signal });
 
             clearTimeout(timeoutId); // 清除超时计时器
 
@@ -382,10 +391,7 @@ export const useHostAPI = () => {
           const timeoutId = setTimeout(() => controller.abort(), localStorage.getItem('timeout') ? parseInt(localStorage.getItem('timeout') as string, 10) : 3000); // 3秒超时
 
           try {
-            const res = await axios.get<{ status: 'success' | 'failed' }>(
-              url + '/api/utils/env',
-              { signal: controller.signal }
-            );
+            const res = await probeBackend(url, { signal: controller.signal });
 
             clearTimeout(timeoutId); // 清除超时计时器
 
@@ -443,10 +449,7 @@ export const useHostAPI = () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), localStorage.getItem('timeout') ? parseInt(localStorage.getItem('timeout') as string, 10) : 3000); // 3秒超时
 
-            const res = await axios.get<{ status: 'success' | 'failed' }>(
-              apiUrl + '/api/utils/env',
-              { signal: controller.signal }
-            );
+            const res = await probeBackend(apiUrl, { signal: controller.signal });
 
             clearTimeout(timeoutId); // 清除超时计时器
 
@@ -500,10 +503,7 @@ export const useHostAPI = () => {
           const timeoutId = setTimeout(() => controller.abort(), localStorage.getItem('timeout') ? parseInt(localStorage.getItem('timeout') as string, 10) : 3000); // 3秒超时
 
           try {
-            const res = await axios.get<{ status: 'success' | 'failed' }>(
-              apiUrl + '/api/utils/env',
-              { signal: controller.signal }
-            );
+            const res = await probeBackend(apiUrl, { signal: controller.signal });
 
             clearTimeout(timeoutId); // 清除超时计时器
 

@@ -131,6 +131,10 @@ export default function serve() {
             });
         }
     }
+    if ($.env.isNode) {
+        // Keep Node-only modules lazy for QX / Loon / Surge script products.
+        require('../management/index.cjs').registerManagement($app);
+    }
     // register routes
     registerCollectionRoutes($app);
     registerSubscriptionRoutes($app);

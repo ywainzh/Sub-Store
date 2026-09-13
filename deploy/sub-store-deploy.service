@@ -1,0 +1,23 @@
+[Unit]
+Description=Sub-Store fixed release deployment worker
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+User=root
+Group=substore
+WorkingDirectory=/usr/local/lib/sub-store
+ExecStart=/usr/bin/flock -n /run/lock/sub-store-deploy.lock /usr/bin/node /usr/local/lib/sub-store/deploy/worker.cjs
+TimeoutStartSec=20min
+Restart=on-failure
+RestartSec=5
+UMask=0027
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/sub-store /var/lib/sub-store /var/lib/sub-store-deploy /run/lock
+
+[Install]
+WantedBy=multi-user.target

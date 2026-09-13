@@ -24,7 +24,7 @@ export default function express({ substore: $, port, host }) {
         'Content-Type': 'text/plain;charset=UTF-8',
         'Access-Control-Allow-Methods': 'POST,GET,OPTIONS,PATCH,PUT,DELETE',
         'Access-Control-Allow-Headers':
-            'Origin, X-Requested-With, Content-Type, Accept',
+            'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token',
         'X-Powered-By': isNode
             ? eval('process.env.SUB_STORE_X_POWERED_BY') || 'Sub-Store'
             : 'Sub-Store',
@@ -35,6 +35,8 @@ export default function express({ substore: $, port, host }) {
         const express_ = eval(`require("express")`);
         const bodyParser = eval(`require("body-parser")`);
         const app = express_();
+        app.set('trust proxy', 'loopback');
+        app.disable('x-powered-by');
         const limit = eval('process.env.SUB_STORE_BODY_JSON_LIMIT') || '1mb';
         $.info(`[BACKEND] body JSON limit: ${limit}`);
         app.use((req, res, next) => {

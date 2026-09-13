@@ -24,7 +24,7 @@
 - `master` == 仅继承自上游的保留分支，**不得修改**。
 - 远程：
   - `origin`    = `github.com/ywainzh/Sub-Store`（自己的 fork，**可 push**）
-  - `upstream`  = `github.com/sub-store-org/Sub-Store`（官方上游，**只同步、不 push**）
+  - `upstream`  = `github.com/sub-store-org/Sub-Store`（官方上游，**只作参考、不 push**）
 
 **任何改动前先确保在 `release`**：
 ```bash
@@ -36,25 +36,27 @@ git checkout release
 ```bash
 git checkout release          # 确保在 release
 # ... 修改代码 ...
-git add -A
+git add <本次修改的文件>        # 保留工作区里其它已有改动
 git commit -m "feat/fix/chore: 说明"
-git push origin release       # 即发布（同步后自动认证推送）
+git push origin release       # 保存源码；全新 vX.Y.Z tag 触发正式发布
 ```
 
-## 4. 同步上游官方更新（重要）
+## 4. 人工挑选上游更新（重要）
 
-fork 需定期把官方更新合入 release：
+保留 upstream 供参考，独立构建发布。不自动追踪 latest，不整批合并 upstream/master；按需审阅并人工引入具体修复：
 
 ```bash
 git checkout release
 git fetch upstream master
-git merge upstream/master     # 把官方 master 合入 release
-# 有冲突则：git add <冲突文件> && git commit -m "merge: sync upstream/master"
+git log --oneline upstream/master  # 审阅需要的修复
+git cherry-pick <明确选中的提交>     # 或人工移植，再通过本项目测试
 git push origin release
 ```
 
 > 注意：仅后端代码来自 `sub-store-org/Sub-Store`；`frontend-local/` 前端来自
 > `sub-store-org/Sub-Store-Front-End`，**不会随 upstream 自动更新**，如需更新前端须单独处理。
+
+`release` 禁止强推和删除（对管理员生效），正常直接提交仍允许。发布构建必须检出指定 tag 的提交并验证其属于 release 历史；已发布版本不可覆盖。
 
 ## 5. Git 推送认证 / GitHub Token（排障重点）
 
@@ -104,7 +106,9 @@ git push origin release
 > 见 **[`docs/SUB-IMPORT.md`](docs/SUB-IMPORT.md)**。
 
 - **线上服务**：生产 Sub-Store 部署于甲骨文 VPS，公网 `https://sub-store.0222999.xyz`，
-  后端反代到 `127.0.0.1:3000`（后端无鉴权，数据存 `backend/sub-store.json`，勿手改文件）。
+  后端反代到 `127.0.0.1:3000`。管理 API 使用 30 天 Cookie 会话或独立 Bearer API token；分享 token 仅用于 `/share/`。
+- 数据存 `/var/lib/sub-store/data`，勿手改文件；认证哈希与会话独立存放，不能进入导出、备份、日志或 Git。
+- **在线版本管理**：“我的 → 关于 Sub-Store”，常态两版程序加一份部署前数据快照；服务器不编译。部署助手由 root 管理，应用专用用户无 sudo 权限，详见 `deploy/README.md`。
 - **给其他 agent 用**：通过 REST API `POST /api/subs`（创建）、`PATCH /api/sub/:name`（改）、
   `DELETE /api/sub/:name`（删）、`POST /api/preview/sub`（验证解析）。
 - **两种来源**：本地单节点用 `source:"local"` + `content`；远程 SJIP 订阅用 `source:"url"` + `url`。

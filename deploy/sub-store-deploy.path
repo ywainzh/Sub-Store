@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch the Sub-Store deployment inbox
+
+[Path]
+PathExists=/var/lib/sub-store-deploy/inbox/request.json
+Unit=sub-store-deploy.service
+
+[Install]
+WantedBy=multi-user.target

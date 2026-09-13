@@ -9,11 +9,15 @@
 | --- | --- |
 | Sub-Store 生产服务 | `https://sub-store.0222999.xyz`（公网） |
 | Sub-Store 后端 | 通过 Nginx 反代到 `127.0.0.1:3000` |
-| 数据文件 | `/opt/sub-store/backend/sub-store.json`（**不要手动改文件**，用 API） |
+| 数据文件 | `/var/lib/sub-store/data/sub-store.json`（**不要手动改文件**，用 API） |
 | 订阅导出目标 | `mihomo`/`ClashMeta`（支持 VLESS+REALITY / Hysteria2）；`Clash`(Premium) **不支持 REALITY** |
 
-> ⚠️ 后端无鉴权（本地安全隔离于 `127.0.0.1`，公网经 Nginx 仅暴露 443）。如从外部访问，
-> 注意命令行走代理会串连；测试务必 `--noproxy '*'` 或直接在服务器上 `ssh oracle_vm`。
+管理 API、数据导出与普通下载均要求认证，包括本机回环请求。自动化使用独立的
+`Authorization: Bearer` API token；分享 token 只用于 `/share/`，不能管理订阅。
+在执行环境中安全注入 `SUB_STORE_API_TOKEN`，不要把真实值写入脚本、命令历史、日志或 Git。
+服务器只保存 token 哈希，不能从服务器认证文件反查明文；凭据交付与轮换见 [部署手册](../deploy/README.md)。
+下列示例中的环境变量必须由执行脚本的环境提供；SSH 不会自动转发本机环境变量。
+如从外部访问，注意命令行走代理会串连；测试可用 `--noproxy '*'` 或直接在服务器上执行。
 
 ---
 
@@ -49,12 +53,12 @@
 
 ```bash
 ssh oracle_vm 'python3 - <<PY
-import json, urllib.request, urllib.parse
+import json, os, urllib.request, urllib.parse
 name = "节点名"
 vl = "vless://UUID@服务器:端口?encryption=none&security=reality&sni=www.example.com&fp=chrome&pbk=PUBLIC_KEY&sid=SHORT_ID&type=tcp&headerType=none#节点名"
 body = {"name": name, "source": "local", "content": vl, "enable": True, "ignoreFailedRemoteSub": False}
 req = urllib.request.Request("http://127.0.0.1:3000/api/subs",
-      data=json.dumps(body).encode(), headers={"Content-Type":"application/json"})
+      data=json.dumps(body).encode(), headers={"Content-Type":"application/json", "Authorization": "Bearer " + os.environ["SUB_STORE_API_TOKEN"]})
 print(urllib.request.urlopen(req, timeout=12).read().decode())
 PY'
 ```
@@ -72,6 +76,7 @@ hysteria2://密码%2B编码@服务器:8443?sni=服务器域名&alpn=h3#节点名
 ```bash
 # 服务器上执行
 curl -sS -X POST http://127.0.0.1:3000/api/subs \
+  -H "Authorization: Bearer $SUB_STORE_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"glados","source":"url","url":"https://update.glados-config.com/.../glados.yaml","enable":true}'
 ```
@@ -88,13 +93,13 @@ body = {"name": "订阅名", "source": "url"/"local",
 # 服务器上
 urllib.request.urlopen(urllib.request.Request(
    "http://127.0.0.1:3000/api/preview/sub",
-   data=json.dumps(body).encode(), headers={"Content-Type":"application/json"}), timeout=30)
+   data=json.dumps(body).encode(), headers={"Content-Type":"application/json", "Authorization": "Bearer " + os.environ["SUB_STORE_API_TOKEN"]}), timeout=30)
 # → data.processed 列表，检查 len>0 和 type
 ```
 
 导出目标配置（确认参数不丢失，尤其 REALITY 的 `reality-opts`）：
 ```bash
-curl -sS "http://127.0.0.1:3000/download/<urlencode名>/mihomo"
+curl -sS -H "Authorization: Bearer $SUB_STORE_API_TOKEN" "http://127.0.0.1:3000/download/<urlencode名>/mihomo"
 ```
 
 ---

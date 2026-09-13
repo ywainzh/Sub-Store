@@ -13,15 +13,7 @@
     },
     "plugins": [
         [
-            "babel-plugin-relative-path-import",
-            {
-                "paths": [
-                    {
-                        "rootPathPrefix": "@",
-                        "rootPathSuffix": "src"
-                    }
-                ]
-            }
+            "./babel-alias.cjs"
         ]
     ]
 }

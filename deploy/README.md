@@ -1,318 +1,142 @@
-# Sub-Store 服务器部署手册
+# Sub-Store 独立部署与版本管理
 
-本手册面向把 Sub-Store（后端 + 官方前端）部署到一台 Linux VPS。
-**核心原则：服务器绝不编译任何代码（不跑 node/pnpm/esbuild/vite），只拉取 GitHub Release
-发布的、已经构建好的完整运行包，解压后由 systemd/pm2 守护运行。**
+前后端统一使用 `ywainzh/Sub-Store` 的 GitHub Release。服务器只下载、校验和运行发布包，不安装 pnpm、不编译源码。Node 构建版本固定为 `.node-version` 中的 24.15.0；服务器使用 Node 24，版本不低于此值。
 
-> 发布流程见本文件「发布新版本」和仓库根目录 `docs/BRANCH.md`、`AGENTS.md`。
+## 发布
 
-| 项目 | 固定值 |
+所有开发在 `release`；`master` 保留。旧 `build` 工作流已停用并从 `release` 移除，`release` 禁止强推和删除，对管理员也生效，允许正常直接提交。
+
+1. 在 `release` 完成改动，只暂存本次修改的文件，提交并正常推送。
+2. 创建全新的正式 tag，例如 `git tag -a v0.1.0 -m "Sub-Store v0.1.0"`，再推送该 tag。
+3. 等待 `build & release server tarball` 完成。手动触发时同样必须填写已存在的 `vX.Y.Z` tag。
+
+流程验证 tag 对应提交属于 `release` 历史，检出该提交，使用 Node 24.15.0、pnpm 11.0.9 和两个 `pnpm-lock.yaml` 执行冻结安装。后端测试、管理/部署测试、前端语言检查、类型检查、构建及完整包启动检查全部通过后才发布。已有 Release（包括草稿）不可覆盖；失败的草稿须检查原因后人工处理，不能重用已正式发布的版本号。
+
+每个版本包含：
+
+- `sub-store-server-<tag>.tar.gz`：自包含后端、前端、部署工具及开源许可证。
+- `release-manifest.json`：项目 tag、commit、前后端自身版本、测试 Node 版本、数据格式与管理/认证协议版本。
+- `checksums.txt`：发布包与独立清单的 SHA-256。
+
+构建与部署不跟踪上游 latest，也不动态安装依赖。保留 `upstream` 供人工挑选修复；详见 [分支说明](../docs/BRANCH.md)。
+
+## 服务器布局与权限
+
+| 路径 | 内容与权限 |
 | --- | --- |
-| 仓库 | `github.com/ywainzh/Sub-Store` |
-| 发布分支 | `release` |
-| 发布包 | GitHub Release 中的 `sub-store-server-<tag>.tar.gz` |
-| 部署目录 | `/opt/sub-store` |
-| 应用监听 | `127.0.0.1:3000`（默认，可改） |
-| 公网域名 | （你的域名，示例 `sub.example.com`） |
-| 数据目录 | `/opt/sub-store/backend/`（运行时生成 `sub-store.json`、`root.json`，见备份一节） |
+| `/opt/sub-store/releases/<tag>` | root 管理的程序目录，常态最多两版 |
+| `/opt/sub-store/current` | root 管理的当前版本符号链接 |
+| `/var/lib/sub-store/data` | `substore` 用户可写的 `sub-store.json` 与 `root.json` |
+| `/etc/sub-store/auth.json` | 管理员密码哈希、API token 哈希和会话撤销版本；root 可写、应用只读 |
+| `/var/lib/sub-store-auth/sessions.json` | 独立会话状态，不参与版本或数据回退 |
+| `/etc/sub-store/app.env` | 生产环境配置，root 管理 |
+| `/etc/sub-store/deploy.json` | 部署助手固定配置，root 管理 |
+| `/var/lib/sub-store-deploy/inbox` | 应用提交受限部署请求的目录 |
+| `/var/lib/sub-store-deploy/state` | root 写入的任务状态和安装记录，应用只读；最多保留 20 个小型任务记录 |
+| `/var/lib/sub-store-deploy/snapshot` | 唯一数据快照，仅包含两个数据文件与校验信息 |
+| `/var/lib/sub-store-deploy/work` | 事务临时目录，完成后清理 |
+| `/usr/local/lib/sub-store` | root 管理的部署助手，不随应用回退 |
 
----
+应用以专用 `substore` 用户运行，无 sudo 权限。`sub-store-deploy.path` 观察固定请求文件并启动唯一的 `sub-store-deploy.service`；后台只提交 UUID、合法版本 tag 和是否恢复快照，不接受命令、路径或下载 URL。助手用 `flock` 互斥、持久化事务，应用重启不影响它，机器重启或助手中断后会继续完成清理或恢复。
 
-## 1. 发布流程（在本地/GitHub，不在服务器）
+不增加定时备份。常态是当前版、上一版和一份部署前数据快照；下载与切换期间允许暂存候选版本。认证状态、systemd 日志和程序不进入数据快照。
 
-所有代码在 `release` 分支；提交并打 tag 后，`GitHub Actions` 自动构建发布包。
+## 首次安装或从 v0.0.1 迁移
 
-```bash
-git switch release
-git pull --ff-only origin release
-git status                  # 应干净
+前置条件：Ubuntu/Debian、Node 24、systemd、Nginx HTTPS，现有站点配置在 `/etc/nginx/sites-available/sub-store`，域名与命令参数一致。应用监听 `127.0.0.1:3000`。当前安装器专用于这套固定服务器布局；其它路径须先调整并审阅安装器，不能将任意路径传给网页部署接口。
 
-# 提交你的改动
-git add -A
-git commit -m "feat/fix: 说明"
-git push origin release
-
-# 确认后打版本 tag（每次全新、不可复用）
-git tag -a vX.Y.Z -m "Sub-Store vX.Y.Z"
-git push origin vX.Y.Z
-```
-
-在 GitHub Actions 确认「build & release server tarball」工作流成功，然后 GitHub Release
-页面会生成：
-- `sub-store-server-vX.Y.Z.tar.gz`（完整运行包）
-- `checksums.txt`（校验和）
-
-> 服务器不需要 GitHub Token；镜像/包公开可拉取。CI 在 GitHub 上完成所有编译。
-
-### 版本规则
-
-- 二开版本从 `v0.1.0` 起，按补丁递增：`v0.1.0 → v0.1.1 → ...`
-- 每次发布必须使用全新 `vX.Y.Z`；不要复用/强推/删除已发布 tag。
-- 日常小修、上游同步递增最后一位（如 `v0.1.1`）；规划了新功能阶段才升中间位。
-- 不要用 `latest`、`release-*`、日期命名 tag。
-
----
-
-## 2. 服务器前置条件
-
-- 一台 Linux VPS（Ubuntu 20.04+ / Debian 11+ / CentOS 8+）
-- 已安装 **Node.js 24.x**（`dist/sub-store.bundle.js` 需要在 Node 22+ 正常运行，建议用 24.15.0）
-  - 只用运行时链路，不需要 pnpm、不需要任何构建工具
-- 已安装 `systemd`（Ubuntu/Debian/CentOS 自带）
-- （推荐）`pm2` 可选进程守护，二选一即可
-- 代理选做：Nginx + Certbot（HTTPS）
-
-> Node 安装方式（服务器只需 node runtime，无需编译）：
-> ```bash
-> curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-> sudo apt-get install -y nodejs
-> # 或直接用 nvm 安装仓库要求的 24.15.0
-> # curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
-> # nvm install 24.15.0 && nvm use 24.15.0
-> ```
-
----
-
-## 3. 第一次部署
-
-### 3.1 下载并校验发布包
-
-以下以 `v0.1.0` 为例；实际替换为本次 tag。
+先在本机、仓库外创建仅自己可读的私有目录，用已检出的发布代码生成凭据：
 
 ```bash
-export TAG=v0.1.0
-export DIR=/opt/sub-store
-export RELEASE=https://github.com/ywainzh/Sub-Store/releases/download/${TAG}
-
-sudo install -d -m 0755 "${DIR}"
-cd "${DIR}"
-
-# 下载
-curl -fsSL "${RELEASE}/sub-store-server-${TAG}.tar.gz" -o /tmp/sub-store-server.tar.gz
-curl -fsSL "${RELEASE}/checksums.txt" -o /tmp/sub-store-checksums.txt
-
-# 校验
-expected=$(grep "sub-store-server-${TAG}.tar.gz" /tmp/sub-store-checksums.txt | awk '{print $1}')
-actual=$(sha256sum /tmp/sub-store-server.tar.gz | awk '{print $1}')
-test -n "${expected}"
-test "${expected}" = "${actual}"
-
-# 安全检查 + 解压
-tar -tzf /tmp/sub-store-server.tar.gz | grep -Eq '(^/|(^|/)\.\.(/|$))' && exit 1 || true
-sudo tar -xzf /tmp/sub-store-server.tar.gz -C "${DIR}" --strip-components=1
+umask 077
+PRIVATE_DIR="$HOME/.local/share/sub-store-private"
+mkdir -p "$PRIVATE_DIR"
+node deploy/auth-cli.cjs init --auth-file "$PRIVATE_DIR/auth.json" --output "$PRIVATE_DIR/credentials.json"
 ```
 
-解压后的目录结构：
+`credentials.json` 包含随机初始密码和独立 API token，账号固定为 `admin`。不要复制到仓库、聊天、日志或服务器数据目录。Windows 使用私有目录的 NTFS ACL 限制读取；不要仅依赖 POSIX 文件模式。
 
-```
-/opt/sub-store/
-├── backend/
-│   └── dist/
-│       ├── sub-store.bundle.js      # Node 后端运行入口（自包含）
-│       ├── runtime-manifest.json
-│       └── sub-store-0.min.js
-│       └── sub-store-1.min.js
-│       └── sub-store-parser.loon.min.js
-│       └── proxy-utils.esm.mjs
-├── frontend/                        # 前端静态资源
-└── data/                            # （首次运行自动创建）
+将 `auth.json`（只有哈希）和当前已审核的部署工具上传至服务器私有临时目录，保持以下结构：
+
+```text
+sub-store-bootstrap/
+├── auth.json
+├── deploy/                    # 本项目 deploy 目录
+└── backend/src/management/    # 本项目对应目录
 ```
 
-> 目录归 server 用户所有，注意权限：
-> ```bash
-> sudo chown -R "$(id -u):$(id -g)" "${DIR}"
-> ```
-
-### 3.2 配置环境变量
-
-创建环境变量文件 `/opt/sub-store/.env`（存运行时配置）：
-```
-SUB_STORE_BACKEND_API_PORT=3000
-SUB_STORE_BACKEND_API_HOST=127.0.0.1
-SUB_STORE_BACKEND_MERGE=ON
-SUB_STORE_FRONTEND_BACKEND_PATH=/
-SUB_STORE_FRONTEND_PATH=/opt/sub-store/frontend
-# 只允许你自己的站点来源；公网必须给真实域名，禁止 *
-SUB_STORE_CORS_ALLOWED_ORIGINS=https://sub.example.com
-```
-> `.env` 含可能的私有信息，`chmod 600`；不要提交到 Git。
-
-### 3.3 systemd 服务（推荐）
-
-创建 `/etc/systemd/system/sub-store.service`：
-
-```ini
-[Unit]
-Description=Sub-Store Subscription Manager
-After=network.target
-
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/opt/sub-store/backend
-EnvironmentFile=/opt/sub-store/.env
-ExecStart=/usr/bin/node dist/sub-store.bundle.js
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-启动并开机自启：
+服务器执行（安装过程无编译）：
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now sub-store
-sudo systemctl status sub-store
+sudo install -d -m 0750 /etc/sub-store
+sudo install -o root -g root -m 0600 /home/ubuntu/sub-store-bootstrap/auth.json /etc/sub-store/auth.json
+sudo node /home/ubuntu/sub-store-bootstrap/deploy/install.cjs v0.1.0 https://sub-store.0222999.xyz
 ```
 
-验证：
-```bash
-curl -fsS http://127.0.0.1:3000/                  # 前端 HTML
-curl -fsS http://127.0.0.1:3000/api/utils/env      # 前端 API
-```
+安装器从固定公开仓库下载并检查 SHA-256、USTAR 路径、包内外清单与兼容性，拒绝链接、设备文件和越界路径。它创建专用用户，将程序、数据与认证分离，安装 systemd 服务。迁移期间 Nginx 暂时封闭 `/api` 和 `/download`，分享入口保持独立 token 校验。停止旧服务取得一致快照后切换新版本，通过健康、匿名管理拒绝和现有分享检查后才重新开放管理入口。
 
----
+首次迁移保留 `v0.0.1` 程序作为 SSH 应急版本，网页不会列出它。首次正常网页升级成功后，它会按“两版”策略被清理。不要重复运行安装器覆盖已安装目录。
 
-## 4. Nginx + HTTPS（公网访问）
+生产配置必须明确设置 `NODE_ENV=production`、`SUB_STORE_AUTH_ENABLED=true`、`SUB_STORE_AUTH_FILE`、`SUB_STORE_AUTH_SESSIONS_FILE`、`SUB_STORE_PUBLIC_ORIGIN=https://你的域名`。缺失/损坏凭据、错误路径或生产禁用认证都会拒绝启动。
 
-代理到本机 `3000` 并自动签发证书：
+## 登录、自动化与凭据轮换
 
-```bash
-sudo apt-get install -y nginx certbot python3-certbot-nginx
-```
+浏览器使用 `HttpOnly`、生产 `Secure`、`SameSite=Strict` Cookie。会话固定 30 天到期，不因访问续期，重启服务后保留；退出仅撤销当前会话。重置密码撤销全部浏览器会话，轮换 API token 不影响浏览器会话。最多保留 32 个未过期会话。
 
-创建 `/etc/nginx/sites-available/sub.example.com`：
-
-```nginx
-server {
-    server_name sub.example.com;
-    location / { proxy_pass http://127.0.0.1:3000; }
-}
-```
-
-启用 + 发证：
-```bash
-sudo ln -s /etc/nginx/sites-available/sub.example.com /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d sub.example.com --redirect
-```
-
-> Nginx 反代会把请求转发给后端；后端用 `SUB_STORE_FRONTEND_BACKEND_PATH=/` 同端口服务前端+API，
-> 因此 `/api` 与前端都在同一个 3000 端口被反代，无需额外配置。 `CORS` 需要用公网域名。
-
----
-
-## 5. 升级到新版本
-
-升级不改配置、不改数据目录，只需覆盖运行包并重启。
+自动化只通过请求头认证，不接受查询参数中的管理 token：
 
 ```bash
-export TAG=v0.1.1
-export DIR=/opt/sub-store
-export RELEASE=https://github.com/ywainzh/Sub-Store/releases/download/${TAG}
-
-# 备份配置（非数据；你的订阅数据在 backend/data）
-sudo cp ${DIR}/.env /tmp/.env.bak
-
-# 下载校验解压（同 3.1，覆盖 backend/frontend）
-curl -fsSL "${RELEASE}/sub-store-server-${TAG}.tar.gz" -o /tmp/sub-store-server.tar.gz
-curl -fsSL "${RELEASE}/checksums.txt" -o /tmp/sub-store-checksums.txt
-expected=$(grep "sub-store-server-${TAG}.tar.gz" /tmp/sub-store-checksums.txt | awk '{print $1}')
-actual=$(sha256sum /tmp/sub-store-server.tar.gz | awk '{print $1}')
-test "${expected}" = "${actual}"
-sudo tar -xzf /tmp/sub-store-server.tar.gz -C "${DIR}" --strip-components=1
-
-# 重启服务
-sudo systemctl restart sub-store
-sudo systemctl status sub-store
-curl -fsS http://127.0.0.1:3000/api/utils/env
+curl -fsS -H "Authorization: Bearer $SUB_STORE_API_TOKEN" https://sub-store.0222999.xyz/api/subs
 ```
 
-> 升级不会覆盖 `.env` / 数据目录。Sub-Store 的订阅数据保存在 `backend/sub-store.json`
-> （由应用运行时生成/读写），注意备份它。
+`SUB_STORE_API_TOKEN` 由本机私有凭据文件读取到当前进程，禁止输出或提交其值。普通订阅客户端继续使用 `/share/...?...token=...` 的分享链接。分享 token 不能管理订阅。
 
----
+所有浏览器管理 API（包括旧的 GET 操作）校验 CSRF；自动化 Bearer 请求不依赖 Cookie/CSRF。`GET /api/auth/status` 可获取当前会话的 CSRF 值，供本站前端后续发送 `X-CSRF-Token`。登录有每 IP 和全局限流。对 Nginx 的信任只限本机回环地址。
 
-## 6. 备份
-
-Sub-Store 的数据文件（含你的订阅、节点配置）：
-- `/opt/sub-store/backend/sub-store.json`
-- `/opt/sub-store/backend/root.json`（缓存）
-
-手动备份：
-```bash
-mkdir -p /opt/sub-store/backups
-cp /opt/sub-store/backend/sub-store.json /opt/sub-store/backups/sub-store.$(date +%Y%m%d-%H%M%S).json
-cp /opt/sub-store/backend/root.json      /opt/sub-store/backups/root.$(date +%Y%m%d-%H%M%S).json
-```
-
-可选：cron 每日备份
-```bash
-sudo install -m 0644 -d /etc/cron.d
-# 在 /etc/cron.d/sub-store-backup 中写入：
-# 30 3 * * * root cp /opt/sub-store/backend/sub-store.json /opt/sub-store/backups/sub-store.\$(date +%Y%m%d).json
-```
-
----
-
-## 7. 回滚
-
-若新版本异常，回退到上一个版本 tag：
+在本机私有目录接收服务器生成的新凭据，服务器仍只保留哈希：
 
 ```bash
-export DIR=/opt/sub-store
-sudo systemctl stop sub-store
-curl -fsSL "https://github.com/ywainzh/Sub-Store/releases/download/v0.1.0/sub-store-server-v0.1.0.tar.gz" -o /tmp/rollback.tar.gz
-sudo tar -xzf /tmp/rollback.tar.gz -C "${DIR}" --strip-components=1
-sudo systemctl start sub-store
-curl -fsS http://127.0.0.1:3000/api/utils/env
+umask 077
+ssh oracle_vm 'sudo node /usr/local/lib/sub-store/deploy/auth-cli.cjs reset-password --output -' > "$PRIVATE_DIR/new-password.json"
+ssh oracle_vm 'sudo node /usr/local/lib/sub-store/deploy/auth-cli.cjs rotate-api-token --output -' > "$PRIVATE_DIR/new-api-token.json"
 ```
 
-> 数据库无关（Sub-Store 无外部 DB，数据存 JSON），回滚通常不回退数据文件。
+两条命令分别撤销旧密码会话/旧 API token，立即生效，无需重启。不要直接运行 `--output -` 将凭据打印到公共终端。
 
----
+## 网页更新与回退
 
-## 8. 运维 / 排障
+打开“我的 → 关于 Sub-Store”。版本更新列出本项目最新兼容正式 Release 与更新说明；版本回退可分页选择兼容历史版本，标记本地上一版。远程版本按需下载，不预先缓存所有程序。GitHub 暂时不可用时，本地兼容上一版仍可回退。
 
-```bash
-# 状态与日志
-sudo systemctl status sub-store
-sudo journalctl -u sub-store -n 200 -f
+部署阶段：检查版本 → 下载 → 校验 → 准备 → 停止服务 → 一致快照 → 切换 → 启动 → 健康检查 → 清理。重复请求返回 `409`，任务 ID 和结果持久化，刷新页面或断网不取消任务。服务重启时界面显示等待连接，成功后清理旧 PWA 资源并显示真实项目版本；后端 `env.version` 与前端自身版本保留原本的兼容判断含义。
 
-# 进程与资源
-ps aux | grep sub-store
-df -h / && free -h
+默认回退保留最新订阅数据。只有唯一快照的版本与目标 tag 一致时，才提供“同时恢复数据快照”；需要显式勾选，快照之后的订阅修改会被替换。目标不能读取当前数据格式且没有匹配快照时拒绝回退。健康检查失败时恢复本次操作之前的程序和两个数据文件，失败状态不会标记成功。
 
-# 健康检查
-curl -fsS http://127.0.0.1:3000/api/utils/env
-```
-
-常见问题：
-
-| 问题 | 排查 |
+| 接口 | 行为 |
 | --- | --- |
-| 服务启动但 3000 无响应 | 看 journalctl；确认端口未被占用、`.env` 正确 |
-| 前端打开但 API 报 CORS | `SUB_STORE_CORS_ALLOWED_ORIGINS` 需含你的公网域名 |
-| 访问 `/` 返回后端 JSON | 前端静态 `frontend/index.html` 缺失，确认包内 `frontend/` |
-| 改了代码不生效 | 确认发布了新 tag 且服务器已拉取新包；CI 在 GitHub 完成 |
-| 怀疑包不完整 | 重新校验 `sha256sum` 与 `checksums.txt` |
+| `POST /api/auth/login` | `{username:"admin",password}` 建立会话 |
+| `GET /api/auth/status` | 认证能力、登录状态与当前 CSRF 值 |
+| `POST /api/auth/logout` | 撤销当前会话 |
+| `GET /api/system/versions?page=1` | 当前/上一版、兼容 Release、快照信息、进行中任务 |
+| `POST /api/system/deployments` | `{tag:"vX.Y.Z",restoreData:false}`，返回 `202` 与任务 ID |
+| `GET /api/system/deployments/:id` | 实际阶段、成功/失败及恢复结果 |
+| `GET /api/health` | 无敏感信息的就绪状态、项目 tag 和认证能力 |
 
----
+除登录、认证状态和健康检查外，管理接口均需认证。返回格式沿用 `{status:"success",data:...}` 或 `{status:"failed",error:...}`。
 
-## 9. 与官方上游同步
-
-仓库定期从官方 `sub-store-org/Sub-Store` 同步后端改动到 `release`：
+## 故障与应急
 
 ```bash
-git switch release
-git fetch upstream master
-git merge upstream/master
-# 解决冲突后
-git push origin release
+sudo systemctl status sub-store sub-store-deploy.path
+sudo journalctl -u sub-store-deploy -n 40 --no-pager
+curl -fsS http://127.0.0.1:3000/api/health
 ```
-> 前端 `frontend-local/` 来自 `sub-store-org/Sub-Store-Front-End`，需单独处理；
-> `pnpm install && pnpm build` 后，按发布流程产出版本 tag。
 
-同步完成后打新 tag 发布即可。
+任务显示 `recovery-required` 时应检查磁盘、目录权限和服务日志；保留 `state/transaction.json` 与事务临时快照，不要手动删除。修复外部问题后启动 `sub-store-deploy.service`，它会优先恢复未完成事务。
+
+只有首次迁移应急且 `/opt/sub-store/releases/v0.0.1` 仍存在时，才允许通过 SSH：
+
+```bash
+sudo node /usr/local/lib/sub-store/deploy/emergency-legacy.cjs
+```
+
+此命令先封闭公网管理入口，再停止网页部署、恢复 v0.0.1 程序，默认保留当前数据。只有快照对应 v0.0.1 时才能追加 `--restore-snapshot`。分享继续校验原 token，认证文件保留。重新恢复新版认证并验证前，不要手工打开 Nginx 管理 gate。

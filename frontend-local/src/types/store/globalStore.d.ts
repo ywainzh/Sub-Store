@@ -29,6 +29,7 @@ interface ENV {
   hasNewVersion?: boolean;
   latestVersion?: string;
   version?: string;
+  projectVersion?: string;
   feature?: any;
   backend?:
     | 'sing-box'

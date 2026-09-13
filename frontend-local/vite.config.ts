@@ -110,10 +110,18 @@ const viteConfig = defineConfig((mode: ConfigEnv) => {
           ],
         },
         workbox: {
+          skipWaiting: true,
+          clientsClaim: true,
+          cleanupOutdatedCaches: true,
+          importScripts: ['release-worker.js'],
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,json}"],
           navigateFallback: "/index.html",
           navigateFallbackDenylist: [/(^|\/.+)\/(api|download|share)\/.+/],
           runtimeCaching: [
+            {
+              urlPattern: ({ url }) => /\/(api|download|share)(\/|$)/.test(url.pathname),
+              handler: "NetworkOnly",
+            },
             {
               urlPattern: ({ url, request }) => request.destination === "script" && url.origin === self.location.origin,
               handler: "StaleWhileRevalidate",

@@ -1,0 +1,27 @@
+[Unit]
+Description=Sub-Store Subscription Manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=substore
+Group=substore
+WorkingDirectory=/var/lib/sub-store/data
+EnvironmentFile=/etc/sub-store/app.env
+ExecStart=/usr/bin/node /opt/sub-store/current/backend/dist/sub-store.bundle.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/sub-store/data /var/lib/sub-store-auth /var/lib/sub-store-deploy/inbox
+
+[Install]
+WantedBy=multi-user.target

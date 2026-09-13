@@ -1,0 +1,14 @@
+Sub-Store independent server distribution
+https://github.com/ywainzh/Sub-Store
+
+Based on Sub-Store and Sub-Store-Front-End by Peng-YM and the
+sub-store-org contributors. Original projects:
+https://github.com/sub-store-org/Sub-Store
+https://github.com/sub-store-org/Sub-Store-Front-End
+
+The original copyright notices are retained. The backend is distributed
+under AGPL-3.0 (LICENSE); the frontend is distributed under GPL-3.0
+(frontend-local/LICENSE in source, frontend/LICENSE in the release package).
+Corresponding source, including this distribution's modifications, is
+available from the project repository at the exact release tag recorded
+in release-manifest.json. See the corresponding LICENSE files for full texts.

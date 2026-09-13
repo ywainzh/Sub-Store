@@ -5,8 +5,8 @@
   "main": "src/main.js",
   "packageManager": "pnpm@11.0.9",
   "scripts": {
-    "preinstall": "npx only-allow pnpm",
-    "test": "SUB_STORE_FRONTEND_BACKEND_PATH=/ mocha src/test/**/*.spec.js --require @babel/register --recursive",
+    "preinstall": "node ../scripts/check-package-manager.cjs",
+    "test": "node ../scripts/test-backend.cjs",
     "serve": "node sub-store.min.js",
     "start": "nodemon -w src -w package.json --exec babel-node src/main.js",
     "dev:esbuild": "nodemon -w src -w package.json dev-esbuild.js",

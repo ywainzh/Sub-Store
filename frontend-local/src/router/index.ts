@@ -9,6 +9,7 @@ import { initStores } from '@/utils/initApp';
 import { isDynamicImportFailure, resetPwaCacheAndReload } from '@/utils/pwa';
 import My from '@/views/My.vue';
 import i18n from '@/locales';
+import { authState, ensureAuthentication } from '@/utils/managementAuth';
 
 import File from '@/views/File.vue';
 import Sub from '@/views/Sub.vue';
@@ -119,6 +120,11 @@ const router = createRouter({
   // },
   history,
   routes: [
+    {
+      path: '/login',
+      component: () => import('@/views/Login.vue'),
+      meta: { title: 'login', needTabBar: false, needNavBack: false },
+    },
     {
       path: '/',
       component: AppLayout,
@@ -374,8 +380,13 @@ router.afterEach(async (to, from) => {
     }
   }
 });
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
   document.title = 'Sub-Store';
+  if (to.path !== '/login' && !await ensureAuthentication()) {
+    if (!(to.path === '/aboutUs' && sessionStorage.getItem('sub-store-deployment') && !authState.checked)) {
+      return { path: '/login', query: { redirect: to.fullPath } };
+    }
+  }
   // console.log(`beforeEach ${from.path} => ${to.path}`)
   if (to?.path !== '/subs') {
     useSubsStore().cancelFetchFlows();
@@ -394,6 +405,7 @@ router.beforeEach((to, from) => {
   return true
 })
 router.beforeResolve(async (to, from) => {
+  if (to.path === '/login' || !authState.authenticated) return true;
   // document.body.classList.remove('nut-overflow-hidden');
   if (!globalStore) {
     globalStore = useGlobalStore();

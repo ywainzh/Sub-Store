@@ -14,12 +14,12 @@ function createFixture() {
     fs.symlinkSync(
         path.join(backendPath, 'node_modules'),
         path.join(fixturePath, 'node_modules'),
-        'dir',
+        process.platform === 'win32' ? 'junction' : 'dir',
     );
     fs.symlinkSync(
         path.join(backendPath, 'src'),
         path.join(fixturePath, 'src'),
-        'dir',
+        process.platform === 'win32' ? 'junction' : 'dir',
     );
     fs.copyFileSync(
         path.join(backendPath, 'bundle-esbuild.js'),

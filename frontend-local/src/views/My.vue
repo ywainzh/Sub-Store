@@ -664,14 +664,12 @@
 
     <div class="env-block">
       <img v-if="icon" :src="displayBackendIcon" alt="" class="auto-reverse" />
+      <a v-if="env.projectVersion" href="https://github.com/ywainzh/Sub-Store/releases" target="_blank" rel="noopener noreferrer">{{ env.projectVersion }}</a>
       <a
         v-if="env.hasNewVersion"
         target="_blank"
-        :href="
-          env.backend === 'Node'
-            ? 'https://github.com/sub-store-org/Sub-Store/releases'
-            : 'https://github.com/sub-store-org/Sub-Store/tree/master/config'
-        "
+        href="https://github.com/ywainzh/Sub-Store/releases"
+        rel="noopener noreferrer"
       >
         <nut-badge value="NEW">v{{ env.version }}</nut-badge>
       </a>

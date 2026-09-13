@@ -1,12 +1,13 @@
 <template>
   <!-- <GlobalNotify /> -->
-  <NavBar />
-  <SideBar v-show="shouldShowSideBar" />
+  <NavBar v-if="route.path !== '/login'" />
+  <SideBar v-if="route.path !== '/login'" v-show="shouldShowSideBar" />
   <main class="page-body">
     <router-view />
   </main>
-  <LogsOverlay />
+  <LogsOverlay v-if="authState.authenticated && route.path !== '/login'" />
   <MagicPathDialog
+    v-if="authState.authenticated && route.path !== '/login'"
     v-model="showMagicPathDialog"
     :url-api-error="urlApiError"
     :url-api-value="urlApiValue"
@@ -31,6 +32,8 @@ import { ref, watchEffect, onMounted, computed } from "vue";
 import { useHostAPI } from "@/hooks/useHostAPI"; //onMounted
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
+import { authState, ensureAuthentication, managementRequest } from '@/utils/managementAuth';
+import { resetPwaCacheAndReload } from '@/utils/pwa';
 
 const subsStore = useSubsStore();
 const globalStore = useGlobalStore();
@@ -229,7 +232,23 @@ const processUrlApiConfig = async () => {
   isBackendCheckInProgress.value = false;
 }
 
-processUrlApiConfig();
+ensureAuthentication().then(async authenticated => {
+  if (authenticated && authState.enabled && import.meta.env.VITE_PROJECT_VERSION) {
+    try {
+      const health = await managementRequest<{ projectVersion: string }>('/api/health');
+      const mismatchKey = `${import.meta.env.VITE_PROJECT_VERSION}:${health.projectVersion}`;
+      if (health.projectVersion !== import.meta.env.VITE_PROJECT_VERSION &&
+          sessionStorage.getItem('sub-store-assets-refreshed') !== mismatchKey) {
+        sessionStorage.setItem('sub-store-assets-refreshed', mismatchKey);
+        localStorage.removeItem('envCache');
+        await resetPwaCacheAndReload({ reloadDelay: 0 });
+        return;
+      }
+    } catch { /* A persisted deployment can reconnect from the About page. */ }
+  }
+  if (authenticated && window.location.pathname !== '/login') processUrlApiConfig();
+  else isBackendCheckInProgress.value = false;
+});
 
 // 初始化颜色主题
 useThemes();
@@ -290,6 +309,7 @@ onMounted(() => {
 });
 
 function checkAndShowMagicPathDialog() {
+  if (!authState.authenticated || route.path === '/login') return;
   // 如果后端连接检查仍在进行中，不显示弹窗
   if (isBackendCheckInProgress.value) {
     return;

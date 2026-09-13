@@ -1,3 +1,5 @@
+> 本仓库是 [ywainzh/Sub-Store](https://github.com/ywainzh/Sub-Store) 的独立服务器发行版，开发分支为 `release`。前后端统一发布，提供单管理员认证及网页版本更新/回退。请先阅读 [部署手册](deploy/README.md) 和 [分支说明](docs/BRANCH.md)。保留官方署名与 AGPL-3.0 许可证，上游更新按需人工引入。
+
 <p align="center">
 <img src="https://raw.githubusercontent.com/cc63/ICON/main/Sub-Store.png" alt="Sub-Store" width="100">
 </p>

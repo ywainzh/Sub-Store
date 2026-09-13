@@ -2,6 +2,7 @@ import { useAppNotifyStore } from '@/store/appNotify';
 import axios, { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { getHostAPIUrl } from '@/hooks/useHostAPI';
 import { getApiRequestTimeout } from '@/utils/requestTimeout';
+import { authState, ensureAuthentication, goToLogin, ManagementError } from '@/utils/managementAuth';
 
 let appNotifyStore = null;
 
@@ -87,6 +88,20 @@ const service = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+service.interceptors.request.use(async config => {
+  // Never send management headers to external URLs used by other features.
+  if (/^\/(api|download)(\/|$)/.test(config.url || '') &&
+      (config.baseURL || '').replace(/\/$/, '') === getHostAPIUrl()) {
+    if (!await ensureAuthentication()) {
+      if (authState.checked) goToLogin();
+      throw new ManagementError(authState.error || '请先登录', authState.checked ? 401 : 0);
+    }
+    config.withCredentials = true;
+    if (authState.csrfToken) config.headers = { ...config.headers, 'X-CSRF-Token': authState.csrfToken };
+  }
+  return config;
+});
+
 service.interceptors.response.use(
   (response: AxiosResponse<SucceedResponse>): AxiosPromise<SucceedResponse> => {
     // console.log('ddddddddd', response.data);
@@ -95,6 +110,11 @@ service.interceptors.response.use(
   (e: AxiosError<ErrorResponse>): AxiosPromise<ErrorResponse | undefined> => {
     // console.log(e.config.url);
     const requestUrl = e.config?.url || '';
+
+    if (e.response?.status === 401 || (e instanceof ManagementError && e.status === 401)) {
+      goToLogin();
+      return Promise.reject(e);
+    }
 
     if (isCanceledRequestError(e))
       return Promise.reject(e);

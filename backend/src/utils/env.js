@@ -35,6 +35,7 @@ if (isNode) {
 
 let meta = {};
 let feature = {};
+let projectVersion;
 
 try {
     if (typeof $environment !== 'undefined') {
@@ -54,16 +55,16 @@ try {
         meta.plugin = $Plugin;
     }
     if (isNode) {
+        projectVersion = require('../management/index.cjs').loadManifest()?.tag;
         meta.node = {
             version: eval('process.version'),
-            argv: eval('process.argv'),
-            filename: eval('__filename'),
-            dirname: eval('__dirname'),
             env: {},
         };
         const env = eval('process.env');
-        for (const key in env) {
-            if (/^SUB_STORE_/.test(key)) {
+        // Only presentation settings belong in this API. Never expose credentials,
+        // auth/deployment paths, command arguments or arbitrary environment values.
+        for (const key of ['SUB_STORE_BACKEND_CUSTOM_NAME', 'SUB_STORE_DOCKER']) {
+            if (env[key] !== undefined) {
                 meta.node.env[key] = env[key];
             }
         }
@@ -74,6 +75,7 @@ try {
 export default {
     backend,
     version: substoreVersion,
+    projectVersion,
     feature,
     meta,
 };

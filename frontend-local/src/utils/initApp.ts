@@ -5,6 +5,7 @@ import { useArtifactsStore } from "@/store/artifacts";
 import { useGlobalStore } from "@/store/global";
 import { useSettingsStore } from "@/store/settings";
 import { useSubsStore } from "@/store/subs";
+import { authState, ensureAuthentication, goToLogin } from '@/utils/managementAuth';
 // import { Toast } from '@nutui/nutui';
 
 export const initStores = async (
@@ -17,6 +18,12 @@ export const initStores = async (
   const subsStore = useSubsStore();
   const artifactsStore = useArtifactsStore();
   const settingsStore = useSettingsStore();
+
+  if (!await ensureAuthentication()) {
+    globalStore.setLoading(false);
+    if (authState.checked) goToLogin();
+    return;
+  }
 
   const { t } = i18n.global;
   let isSucceed = true;
