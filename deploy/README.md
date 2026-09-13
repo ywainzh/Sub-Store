@@ -7,7 +7,7 @@
 所有开发在 `release`；`master` 保留。旧 `build` 工作流已停用并从 `release` 移除，`release` 禁止强推和删除，对管理员也生效，允许正常直接提交。
 
 1. 在 `release` 完成改动，只暂存本次修改的文件，提交并正常推送。
-2. 创建全新的正式 tag，例如 `git tag -a v0.1.0 -m "Sub-Store v0.1.0"`，再推送该 tag。
+2. 创建全新的正式 tag，例如 `git tag -a v0.1.1 -m "Sub-Store v0.1.1"`，再推送该 tag。
 3. 等待 `build & release server tarball` 完成。手动触发时同样必须填写已存在的 `vX.Y.Z` tag。
 
 流程验证 tag 对应提交属于 `release` 历史，检出该提交，使用 Node 24.15.0、pnpm 11.0.9 和两个 `pnpm-lock.yaml` 执行冻结安装。后端测试、管理/部署测试、前端语言检查、类型检查、构建及完整包启动检查全部通过后才发布。已有 Release（包括草稿）不可覆盖；失败的草稿须检查原因后人工处理，不能重用已正式发布的版本号。
@@ -70,7 +70,7 @@ sub-store-bootstrap/
 ```bash
 sudo install -d -m 0750 /etc/sub-store
 sudo install -o root -g root -m 0600 /home/ubuntu/sub-store-bootstrap/auth.json /etc/sub-store/auth.json
-sudo node /home/ubuntu/sub-store-bootstrap/deploy/install.cjs v0.1.0 https://sub-store.0222999.xyz
+sudo node /home/ubuntu/sub-store-bootstrap/deploy/install.cjs v0.1.1 https://sub-store.0222999.xyz
 ```
 
 安装器从固定公开仓库下载并检查 SHA-256、USTAR 路径、包内外清单与兼容性，拒绝链接、设备文件和越界路径。它创建专用用户，将程序、数据与认证分离，安装 systemd 服务。迁移期间 Nginx 暂时封闭 `/api` 和 `/download`，分享入口保持独立 token 校验。停止旧服务取得一致快照后切换新版本，通过健康、匿名管理拒绝和现有分享检查后才重新开放管理入口。
