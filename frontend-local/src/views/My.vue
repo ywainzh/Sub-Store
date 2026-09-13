@@ -1,67 +1,18 @@
 <template>
   <div class="my-page-wrapper">
     <div class="profile-block">
-      <div class="radio-wrapper" >
-        <span v-for="i in [{value: 'gist'}, {value:'manual'}]" :class="{ 'tag': true, 'current': i.value === storageType }" @click="setTag(i.value)">{{$t(`myPage.storage.${i.value}.label`) }}</span>
-        <div class="storage-language-switch">
-          <LanguageSwitcherButton />
-        </div>
+      <div class="profile-toolbar">
+        <LanguageSwitcherButton />
       </div>
-      <!-- <div class="radio-wrapper" >
-        <nut-radiogroup v-model="storageType" direction="horizontal">
-          <nut-radio shape="button" label="gist">{{ $t(`myPage.storage.gist.label`) }}</nut-radio>
-          <nut-radio shape="button" label="manual">{{ $t(`myPage.storage.manual.label`) }}</nut-radio>
-        </nut-radiogroup>
-      </div> -->
-    
       <div class="info">
-        <div v-if="storageType === 'manual'" class="avatar-wrapper">
-          <nut-avatar
-            :key="avatarDisplayKey"
-            :class="{ 'avatar-fallback': isAvatarFallback }"
-            size="72"
-            bg-color="var(--card-color)"
-            :url="remoteAvatarUrl"
-            :icon="displayAvatarIcon"
-            @on-error="handleAvatarError"
-          />
+        <div class="avatar-wrapper">
+          <nut-avatar class="avatar-fallback" size="72" bg-color="var(--card-color)" :icon="avatar" />
           <div class="name">
-            <p class="title">
-              {{ $t(`myPage.storage.manual.label`) }}
-            </p>
-            <p class="des">
-              <span class="des-line1">{{ $t(`myPage.storage.manual.desc`) }}</span>
-              <!-- <span class="des-line2" v-if="desText.length === 2">
-                {{ desText[1] }}
-              </span> -->
-            </p>
+            <p class="title">{{ $t('myPage.storage.manual.label') }}</p>
+            <p class="des">{{ $t('myPage.storage.manual.desc') }}</p>
           </div>
         </div>
-        <div v-else class="avatar-wrapper gist-avatar-wrapper">
-          <nut-avatar
-            :key="avatarDisplayKey"
-            :class="{ 'avatar-fallback': isAvatarFallback }"
-            size="72"
-            bg-color="var(--card-color)"
-            :url="remoteAvatarUrl"
-            :icon="displayAvatarIcon"
-            @on-error="handleAvatarError"
-          />
-          <div class="name">
-            <p class="title">
-              {{ gistProfileTitle }}
-            </p>
-            <p class="des">
-              <span class="des-line1">{{ desText[0] }}</span>
-              <span class="des-line2" v-if="desText.length === 2">
-                {{ desText[1] }}
-              </span>
-            </p>
-          </div>
-        </div>
-        <div v-if="storageType === 'manual'" class="actions">
-          <!-- <input type="file" @change="uploadFile" /> -->
-          <!-- accept="application/json,text/json,.json"  -->
+        <div class="actions">
           <input type="file" ref="fileInput" @change="fileChange" style="display: none">
           <nut-button
             class="upload-btn"
@@ -74,7 +25,7 @@
           >
             <font-awesome-icon
               icon="fa-solid fa-cloud-arrow-up"
-              v-if="!uploadIsLoading"
+              v-if="!restoreIsLoading"
             />
             {{ $t(`myPage.storage.manual.restore`) }}
           </nut-button>
@@ -92,220 +43,6 @@
             />
             {{ $t(`myPage.storage.manual.backup`) }}
           </nut-button>
-        </div>
-        <div v-else class="actions">
-          <nut-button
-            class="upload-btn"
-            plain
-            type="primary"
-            :disabled="syncIsDisabled"
-            size="small"
-            :loading="uploadIsLoading"
-            @click="uploadBtn"
-          >
-            <font-awesome-icon
-              icon="fa-solid fa-cloud-arrow-up"
-              v-if="!uploadIsLoading"
-            />
-            {{ $t(`myPage.btn.upload`) }}
-          </nut-button>
-          <nut-button
-            class="download-btn"
-            type="primary"
-            size="small"
-            :disabled="syncIsDisabled"
-            :loading="downloadIsLoading"
-            @click="downloadBtn"
-          >
-            <font-awesome-icon
-              v-if="!downloadIsLoading"
-              icon="fa-solid fa-cloud-arrow-down"
-            />
-            {{ $t(`myPage.btn.download`) }}
-          </nut-button>
-        </div>
-      </div>
-      <div class="config-card" v-if="storageType !== 'manual'" >
-        <div class="title-wrapper" @click="isGitHubConfigEditing ? exitEditMode('github') : toggleEditMode('github')">
-          <h1>{{ $t(`myPage.githubConfig`) }}</h1>
-          <div class="config-btn-wrapper">
-            <nut-button
-              v-if="isGitHubConfigEditing"
-              class="cancel-btn"
-              plain
-              type="info"
-              size="mini"
-              @click.stop="exitEditMode('github')"
-              :disabled="isEditLoading"
-            >
-              <font-awesome-icon icon="fa-solid fa-ban" />
-              {{ $t(`myPage.btn.cancel`) }}
-            </nut-button>
-            <nut-button
-              v-if="isGitHubConfigEditing"
-              class="save-btn"
-              type="primary"
-              size="mini"
-              @click.stop="toggleEditMode('github')"
-              :loading="isEditLoading"
-            >
-              <font-awesome-icon
-                v-if="!isGitHubConfigEditing"
-                icon="fa-solid fa-pen-to-square"
-              />
-              <font-awesome-icon
-                v-else-if="!isEditLoading && isGitHubConfigEditing"
-                icon="fa-solid fa-floppy-disk"
-              />
-              {{ !isGitHubConfigEditing ? $t(`myPage.btn.edit`) : $t(`myPage.btn.save`) }}
-            </nut-button>
-            <nut-icon v-else class="right-icon" name="right"></nut-icon>
-          </div>
-        </div>
-        <div class="config-input-wrapper" v-if="isGitHubConfigEditing">
-          <nut-input
-            class="input input-small-left-icon"
-            v-model="userInput"
-            :disabled="!isGitHubConfigEditing"
-            :placeholder="$t(`myPage.placeholder.githubUser`)"
-            type="text"
-            input-align="left"
-            :left-icon="iconUser"
-          >
-            <!-- <template #button>
-              <nut-button :disabled="!isGitHubConfigEditing" :plain="!isGitHubConfigEditing" size="mini" :type="isGitHubConfigEditing ? 'primary' : 'info' " @click="toggleSyncPlatform">{{ syncPlatformInput === 'gitlab' ? ( isGitHubConfigEditing ?'切换回 Gist' : 'GitLab Snippet (β)') : ( isGitHubConfigEditing ?'切换到 GitLab Snippet (β)' : 'Gist') }}</nut-button>
-            </template> -->
-          </nut-input>
-          <nut-input
-            class="input input-small-left-icon"
-            v-model="tokenInput"
-            :disabled="!isGitHubConfigEditing"
-            :placeholder="$t(`myPage.placeholder.gistToken`)"
-            type="text"
-            input-align="left"
-            :left-icon="iconKey"
-          />
-          <nut-input
-            class="input picker-input"
-            :model-value="gistUploadName"
-            readonly
-            :placeholder="$t(`moreSettingPage.gistUpload.title`)"
-            type="text"
-            input-align="left"
-            :left-icon="iconGistUpload"
-            right-icon="rect-right"
-            @click="openGistUploadPicker"
-            @click-right-icon="openGistUploadPicker"
-          />
-          <DesktopPicker
-            v-model="gistUploadPickerValue"
-            v-model:visible="showGistUploadPicker"
-            :columns="gistUploadColumns"
-            :title="$t(`moreSettingPage.gistUpload.title`)"
-            @confirm="handleGistUploadConfirm"
-          />
-          <nut-input
-            class="input picker-input"
-            :model-value="downloadTokenStrategyName"
-            readonly
-            :placeholder="$t(`myPage.downloadTokenStrategy.label`)"
-            type="text"
-            input-align="left"
-            :left-icon="iconKey"
-            right-icon="rect-right"
-            @click="openDownloadTokenStrategyPicker"
-            @click-right-icon="openDownloadTokenStrategyPicker"
-          />
-          <DesktopPicker
-            v-model="downloadTokenStrategyPickerValue"
-            v-model:visible="showDownloadTokenStrategyPicker"
-            :columns="downloadTokenStrategyColumns"
-            :title="$t(`myPage.downloadTokenStrategy.label`)"
-            @confirm="handleDownloadTokenStrategyConfirm"
-          />
-          <nut-input
-            v-if="isGistBackupAgeMode"
-            class="input"
-            v-model="ageSecretKeyInput"
-            :disabled="!isGitHubConfigEditing"
-            :placeholder="$t(`myPage.placeholder.gistAgeSecretKey`)"
-            type="text"
-            input-align="left"
-            :left-icon="iconEncryption"
-          >
-            <template #button>
-              <div class="input-action-icons">
-                <AgeKeyHelper
-                  v-if="isGitHubConfigEditing"
-                  v-model="ageSecretKeyInput"
-                  apply-mode="secret"
-                />
-                <button
-                  type="button"
-                  class="input-action-icon"
-                  @click="gistAgeSecretKeyTips"
-                >
-                  <nut-icon name="tips" />
-                </button>
-              </div>
-            </template>
-          </nut-input>
-          <nut-input
-            class="input"
-            v-model="githubApiUrlInput"
-            :disabled="!isGitHubConfigEditing"
-            :placeholder="$t(`myPage.placeholder.githubApiUrl`)"
-            type="text"
-            input-align="left"
-            :left-icon="icongithubProxy"
-            right-icon="tips"
-            @click-right-icon="githubApiUrlTips"
-          />
-          <nut-input
-            class="input"
-            v-model="githubApiTimeoutInput"
-            :disabled="!isGitHubConfigEditing"
-            :placeholder="$t(`myPage.placeholder.githubApiTimeout`)"
-            type="number"
-            input-align="left"
-            :left-icon="iconTimeout"
-            right-icon="tips"
-            @click-right-icon="githubApiTimeoutTips"
-          />
-          <nut-input
-            class="input"
-            v-model="artifactSyncBatchSizeInput"
-            :disabled="!isGitHubConfigEditing"
-            :placeholder="$t(`myPage.placeholder.artifactSyncBatchSize`)"
-            type="number"
-            input-align="left"
-            :left-icon="iconConcurrency"
-            right-icon="tips"
-            @click-right-icon="artifactSyncBatchSizeTips"
-          />
-          <nut-input
-            class="input"
-            v-model="githubProxyInput"
-            :disabled="!isGitHubConfigEditing"
-            :placeholder="$t(`myPage.placeholder.githubProxy`)"
-            type="text"
-            input-align="left"
-            :left-icon="icongithubProxy"
-            right-icon="tips"
-            @click-right-icon="githubProxyTips"
-          />
-          <nut-input
-            class="input"
-            v-model="githubProxyRegexInput"
-            :disabled="!isGitHubConfigEditing"
-            :placeholder="$t(`myPage.placeholder.githubProxyRegex`)"
-            type="text"
-            input-align="left"
-            :left-icon="icongithubProxy"
-            right-icon="tips"
-            @click-right-icon="githubProxyRegexTips"
-          />
-          
         </div>
       </div>
       <div class="config-card">
@@ -392,17 +129,6 @@
           />
           <nut-input
             class="input"
-            v-model="githubApiTimeoutInput"
-            :disabled="!isRequestConfigEditing"
-            :placeholder="$t(`myPage.placeholder.githubApiTimeout`)"
-            type="number"
-            input-align="left"
-            :left-icon="iconTimeout"
-            right-icon="tips"
-            @click-right-icon="githubApiTimeoutTips"
-          />
-          <nut-input
-            class="input"
             v-model="backendRequestConcurrencyInput"
             :disabled="!isRequestConfigEditing"
             :placeholder="$t(`myPage.placeholder.backendRequestConcurrency`)"
@@ -422,6 +148,28 @@
             :left-icon="iconTimeout"
             right-icon="tips"
             @click-right-icon="backendRequestConcurrencyWaitTimeTips"
+          />
+          <nut-input
+            class="input"
+            v-model="githubProxyInput"
+            :disabled="!isRequestConfigEditing"
+            :placeholder="$t(`myPage.placeholder.githubProxy`)"
+            type="text"
+            input-align="left"
+            :left-icon="icongithubProxy"
+            right-icon="tips"
+            @click-right-icon="githubProxyTips"
+          />
+          <nut-input
+            class="input"
+            v-model="githubProxyRegexInput"
+            :disabled="!isRequestConfigEditing"
+            :placeholder="$t(`myPage.placeholder.githubProxyRegex`)"
+            type="text"
+            input-align="left"
+            :left-icon="icongithubProxy"
+            right-icon="tips"
+            @click-right-icon="githubProxyRegexTips"
           />
         </div>
       </div>
@@ -463,7 +211,7 @@
           </div>
         </div>
         <div class="config-input-wrapper" v-if="isCacheConfigEditing">
-        
+
           <nut-input
             class="input"
             v-model="cacheThresholdInput"
@@ -559,7 +307,7 @@
           </div>
         </div>
         <div class="config-input-wrapper" v-if="isFrontEndConfigEditing">
-        
+
           <nut-input
             class="input"
             v-model="concurrencyInput"
@@ -604,7 +352,7 @@
             right-icon="tips"
             @click-right-icon="apiRequestTimeoutTips"
           />
-        
+
         </div>
       </div>
 
@@ -613,21 +361,6 @@
           :title="$t(`moreSettingPage.shareManageTitle`)"
           class="right-icon"
           @click.stop="onClickShareManage"
-          is-link
-        ></nut-cell>
-        <nut-cell
-          v-if="archiveVisible"
-          :title="$t(`moreSettingPage.archiveTitle`)"
-          class="right-icon"
-          @click.stop="onClickArchive"
-          is-link
-        ></nut-cell>
-      </nut-cell-group>
-      <nut-cell-group v-else-if="archiveVisible">
-        <nut-cell
-          :title="$t(`moreSettingPage.archiveTitle`)"
-          class="right-icon"
-          @click.stop="onClickArchive"
           is-link
         ></nut-cell>
       </nut-cell-group>
@@ -677,40 +410,14 @@
       <p>{{ env.meta?.node?.env?.SUB_STORE_BACKEND_CUSTOM_NAME || env.backend }}</p>
     </div>
 
-    <nut-dialog
-      v-model:visible="showDownloadTokenDialog"
-      teleport="#app"
-      pop-class="download-token-dialog auto-dialog"
-      :title="$t(`myPage.downloadTokenStrategy.dialog.title`)"
-      :ok-text="$t(`myPage.downloadTokenStrategy.dialog.keep`)"
-      :cancel-text="$t(`myPage.downloadTokenStrategy.dialog.overwrite`)"
-      footer-direction="vertical"
-      close-on-popstate
-      :lock-scroll="false"
-      @ok="downloadWithTokenStrategy('keep')"
-      @cancel="downloadWithTokenStrategy('overwrite')"
-      @closed="rememberDownloadTokenStrategy = false"
-    >
-      <div class="download-token-dialog-content">
-        <p>{{ $t(`myPage.downloadTokenStrategy.dialog.content`) }}</p>
-        <label class="download-token-dialog-checkbox">
-          <input v-model="rememberDownloadTokenStrategy" type="checkbox">
-          <span>{{ $t(`myPage.downloadTokenStrategy.dialog.doNotAskAgain`) }}</span>
-        </label>
-      </div>
-    </nut-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { useSettingsApi } from "@/api/settings";
 import avatar from "@/assets/icons/avatar.svg?url";
-import iconKey from "@/assets/icons/key-solid.svg";
-import iconUser from "@/assets/icons/user-solid.svg";
 import iconProxy from "@/assets/icons/proxy.svg";
 import icongithubProxy from "@/assets/icons/githubProxy.svg";
-import iconEncryption from "@/assets/icons/encryption.svg";
-import iconGistUpload from "@/assets/icons/gist-upload.svg";
 import iconUA from "@/assets/icons/user-agent.svg";
 import iconMax from "@/assets/icons/max.svg";
 import iconHeadersCacheTtl from "@/assets/icons/headersCacheTtl.svg";
@@ -721,24 +428,17 @@ import iconTimeout from "@/assets/icons/timeout.svg";
 import iconConcurrency from "@/assets/icons/concurrency.svg";
 import { useAppNotifyStore } from "@/store/appNotify";
 import { useGlobalStore } from "@/store/global";
-import {
-  normalizeGistDownloadTokenStrategy,
-  useSettingsStore,
-} from "@/store/settings";
-import { butifyDate } from "@/utils/butifyDate";
+import { useSettingsStore } from "@/store/settings";
 import { downloadBlobResponse } from "@/utils/download";
 import { createGithubProxyUrlRewriter } from "@/utils/githubProxy";
 import { initStores } from "@/utils/initApp";
 import { storeToRefs } from "pinia";
-import { computed, ref, watch, watchEffect } from "vue";
+import { computed, ref, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useBackend } from "@/hooks/useBackend";
 import { useHostAPI } from '@/hooks/useHostAPI';
 import LanguageSwitcherButton from "@/components/LanguageSwitcherButton.vue";
-import AgeKeyHelper from "@/components/AgeKeyHelper.vue";
-import DesktopPicker from "@/components/DesktopPicker.vue";
-import { AGE_SECRET_KEY } from "@/utils/age";
 import { Dialog, Toast } from '@nutui/nutui';
 
 const { t } = useI18n();
@@ -748,77 +448,12 @@ const router = useRouter();
 const { showNotify } = useAppNotifyStore();
 const { currentUrl: host } = useHostAPI();
 const settingsStore = useSettingsStore();
-const { githubUser, gistToken, syncTime, defaultUserAgent, defaultFlowUserAgent, defaultProxy, defaultTimeout, backendRequestConcurrency, backendRequestConcurrencyWaitTime, cacheThreshold, resourceCacheTtl, headersCacheTtl, scriptCacheTtl, logsMaxCount, syncPlatform, githubProxy, githubApiUrl, githubApiTimeout, artifactSyncBatchSize, githubProxyRegex, gistUpload, gistDownloadTokenStrategy, ageSecretKey } =
-  storeToRefs(settingsStore);
-
-const DEFAULT_GITHUB_API_URL = "https://api.github.com";
-const GIST_UPLOAD_MODES = ["base64", "age", "plaintext"] as const;
-const DOWNLOAD_TOKEN_STRATEGIES = ["ask", "overwrite", "keep"] as const;
-type GistUploadMode = typeof GIST_UPLOAD_MODES[number];
-
-const avatarLoadFailed = ref(false);
-const avatarRenderNonce = ref(0);
-
-const fallbackGithubAvatarUrl = computed(() => {
-  const normalizedGithubUser = githubUser.value?.trim();
-
-  if (!normalizedGithubUser) {
-    return "";
-  }
-
-  return `https://github.com/${encodeURIComponent(normalizedGithubUser)}.png`;
-});
-
-const remoteAvatarUrl = computed(() => {
-  if (!githubUser.value?.trim() || avatarLoadFailed.value) {
-    return "";
-  }
-
-  return fallbackGithubAvatarUrl.value;
-});
-
-const gistProfileTitle = computed(() => {
-  const normalizedGithubUser = githubUser.value?.trim();
-
-  if (normalizedGithubUser) {
-    return normalizedGithubUser;
-  }
-
-  return gistToken.value ? t(`myPage.storage.gist.label`) : t(`myPage.placeholder.name`);
-});
-
-const displayAvatarIcon = computed(() => {
-  return remoteAvatarUrl.value ? "" : avatar;
-});
-
-const isAvatarFallback = computed(() => {
-  return !remoteAvatarUrl.value;
-});
-
-const avatarDisplayKey = computed(() => {
-  return `${remoteAvatarUrl.value || "fallback"}:${avatarRenderNonce.value}`;
-});
-
-const resetAvatarState = (forceRerender = false) => {
-  avatarLoadFailed.value = false;
-
-  if (forceRerender) {
-    avatarRenderNonce.value += 1;
-  }
-};
-
-const handleAvatarError = () => {
-  if (!remoteAvatarUrl.value) {
-    return;
-  }
-
-  avatarLoadFailed.value = true;
-  avatarRenderNonce.value += 1;
-};
-
-watch([githubUser], () => {
-  resetAvatarState(true);
-});
+const {
+  defaultUserAgent, defaultFlowUserAgent, defaultProxy, defaultTimeout,
+  backendRequestConcurrency, backendRequestConcurrencyWaitTime, cacheThreshold,
+  resourceCacheTtl, headersCacheTtl, scriptCacheTtl, logsMaxCount,
+  githubProxy, githubProxyRegex,
+} = storeToRefs(settingsStore);
 
 const { icon, env } = useBackend();
 const githubUrlRewriter = computed(() => {
@@ -833,9 +468,6 @@ const displayBackendIcon = computed(() => {
 const shareBtnVisible = computed(() => {
   return env.value?.feature?.share;
 });
-const archiveVisible = computed(() => {
-  return env.value?.feature?.archive;
-});
 
 const onClickAPISetting = () => {
   router.push(`/settings/api`);
@@ -847,9 +479,6 @@ const onClickLogs = () => {
 const onClickShareManage = () => {
   router.push(`/shares`);
 };
-const onClickArchive = () => {
-  router.push(`/archives`);
-};
 const onClickMore = () => {
   router.push(`/settings/more`);
 };
@@ -859,20 +488,7 @@ const onClickAbout = () => {
 
 
 // 编辑 更新
-const syncPlatformInput = ref("");
-const userInput = ref("");
-const tokenInput = ref("");
-const gistUploadInput = ref<GistUploadMode>("base64");
-const gistUploadPickerValue = ref<GistUploadMode[]>(["base64"]);
-const downloadTokenStrategyInput = ref<DownloadTokenStrategy>(
-  normalizeGistDownloadTokenStrategy(gistDownloadTokenStrategy.value),
-);
-const downloadTokenStrategyPickerValue = ref<DownloadTokenStrategy[]>([downloadTokenStrategyInput.value]);
-const ageSecretKeyInput = ref("");
 const githubProxyInput = ref("");
-const githubApiUrlInput = ref("");
-const githubApiTimeoutInput = ref("");
-const artifactSyncBatchSizeInput = ref("");
 const githubProxyRegexInput = ref("");
 const uaInput = ref("");
 const flowUaInput = ref("");
@@ -889,96 +505,21 @@ const concurrencyInput = ref("");
 const concurrencyWaitTimeInput = ref("");
 const apiCheckTimeoutInput = ref("");
 const apiRequestTimeoutInput = ref("");
-const isGitHubConfigEditing = ref(false);
 const isRequestConfigEditing = ref(false);
 const isCacheConfigEditing = ref(false);
 const isFrontEndConfigEditing = ref(false);
 const isEditLoading = ref(false);
 const isInit = ref(false);
-const storageType = ref('gist');
-const fileInput = ref(null);
-const showGistUploadPicker = ref(false);
-const showDownloadTokenStrategyPicker = ref(false);
-const showDownloadTokenDialog = ref(false);
-const rememberDownloadTokenStrategy = ref(false);
-
-const normalizeGistUploadMode = (value?: string): GistUploadMode => {
-  return GIST_UPLOAD_MODES.includes(value as GistUploadMode) ? value as GistUploadMode : "base64";
-};
-
-const gistUploadColumns = computed(() => GIST_UPLOAD_MODES.map((value) => ({
-  text: t(`moreSettingPage.gistUpload.${value}`),
-  value,
-})));
-
-const gistUploadName = computed(() => t(`moreSettingPage.gistUpload.${gistUploadInput.value}`));
-const isGistBackupAgeMode = computed(() => gistUploadInput.value === "age");
-const downloadTokenStrategyColumns = computed(() => DOWNLOAD_TOKEN_STRATEGIES.map((value) => ({
-  text: t(`myPage.downloadTokenStrategy.${value}`),
-  value,
-})));
-const downloadTokenStrategyName = computed(() => {
-  return `${t("myPage.downloadTokenStrategy.label")}: ${t(`myPage.downloadTokenStrategy.${downloadTokenStrategyInput.value}`)}`;
-});
-
-const setDownloadTokenStrategyInput = (strategy: DownloadTokenStrategy) => {
-  downloadTokenStrategyInput.value = strategy;
-  downloadTokenStrategyPickerValue.value = [strategy];
-};
-
-const openGistUploadPicker = () => {
-  if (!isGitHubConfigEditing.value) return;
-  gistUploadPickerValue.value = [gistUploadInput.value];
-  showGistUploadPicker.value = true;
-};
-
-const handleGistUploadConfirm = ({ selectedValue }) => {
-  const mode = normalizeGistUploadMode(selectedValue?.[0]);
-  gistUploadInput.value = mode;
-  gistUploadPickerValue.value = [mode];
-};
-
-const openDownloadTokenStrategyPicker = () => {
-  if (!isGitHubConfigEditing.value) return;
-  downloadTokenStrategyPickerValue.value = [downloadTokenStrategyInput.value];
-  showDownloadTokenStrategyPicker.value = true;
-};
-
-const handleDownloadTokenStrategyConfirm = ({ selectedValue }) => {
-  setDownloadTokenStrategyInput(
-    normalizeGistDownloadTokenStrategy(selectedValue?.[0]),
-  );
-};
-
+const fileInput = ref<HTMLInputElement | null>(null);
 const createSettingsPayload = (type: string): SettingsPostData => {
-  if (type === "github") {
-    const payload: SettingsPostData = {
-      syncPlatform: syncPlatformInput.value,
-      githubUser: userInput.value,
-      gistToken: tokenInput.value,
-      gistUpload: gistUploadInput.value,
-      gistDownloadTokenStrategy: downloadTokenStrategyInput.value,
-      githubProxy: githubProxyInput.value,
-      githubApiUrl: githubApiUrlInput.value,
-      githubApiTimeout: githubApiTimeoutInput.value,
-      artifactSyncBatchSize: artifactSyncBatchSizeInput.value,
-      githubProxyRegex: githubProxyRegexInput.value,
-    };
-
-    if (gistUploadInput.value === "age") {
-      payload[AGE_SECRET_KEY] = ageSecretKeyInput.value;
-    }
-
-    return payload;
-  }
-
   if (type === "request") {
     return {
       defaultUserAgent: uaInput.value,
       defaultFlowUserAgent: flowUaInput.value,
       defaultProxy: proxyInput.value,
       defaultTimeout: timeoutInput.value,
-      githubApiTimeout: githubApiTimeoutInput.value,
+      githubProxy: githubProxyInput.value,
+      githubProxyRegex: githubProxyRegexInput.value,
       backendRequestConcurrency: backendRequestConcurrencyInput.value,
       backendRequestConcurrencyWaitTime: backendRequestConcurrencyWaitTimeInput.value,
     };
@@ -1000,32 +541,14 @@ const createSettingsPayload = (type: string): SettingsPostData => {
 const toggleEditMode = async (type) => {
   isEditLoading.value = true;
   try {
-    if ((type === 'github' && isGitHubConfigEditing.value) || (type === 'request' && isRequestConfigEditing.value) || (type === 'cache' && isCacheConfigEditing.value)) {
+    if ((type === 'request' && isRequestConfigEditing.value) || (type === 'cache' && isCacheConfigEditing.value)) {
       const saveSucceeded = await settingsStore.changeSettings(createSettingsPayload(type));
-
-      if (saveSucceeded && type === 'github') {
-        resetAvatarState(true);
-        await settingsStore.fetchSettings();
-        resetAvatarState(true);
-      }
 
       if (saveSucceeded) {
         setDisplayInfo();
       }
     } else {
-      syncPlatformInput.value = syncPlatform.value;
-      userInput.value = githubUser.value;
-      tokenInput.value = gistToken.value;
-      gistUploadInput.value = normalizeGistUploadMode(gistUpload.value);
-      gistUploadPickerValue.value = [gistUploadInput.value];
-      setDownloadTokenStrategyInput(
-        normalizeGistDownloadTokenStrategy(gistDownloadTokenStrategy.value),
-      );
-      ageSecretKeyInput.value = ageSecretKey.value;
       githubProxyInput.value = githubProxy.value;
-      githubApiUrlInput.value = githubApiUrl.value || "";
-      githubApiTimeoutInput.value = githubApiTimeout.value || "";
-      artifactSyncBatchSizeInput.value = artifactSyncBatchSize.value || "";
       githubProxyRegexInput.value = githubProxyRegex.value;
       uaInput.value = defaultUserAgent.value;
       flowUaInput.value = defaultFlowUserAgent.value || "";
@@ -1121,9 +644,7 @@ const toggleEditMode = async (type) => {
         concurrencyWaitTimeInput.value = '';
       }
     }
-    if (type === 'github' && !isGitHubConfigEditing.value) {
-      isGitHubConfigEditing.value = !isGitHubConfigEditing.value;
-    } else if (type === 'cache' && !isCacheConfigEditing.value) {
+    if (type === 'cache' && !isCacheConfigEditing.value) {
       isCacheConfigEditing.value = !isCacheConfigEditing.value;
     } else if (type === 'request' && !isRequestConfigEditing.value) {
       isRequestConfigEditing.value = !isRequestConfigEditing.value;
@@ -1143,9 +664,7 @@ const toggleEditMode = async (type) => {
 
 const exitEditMode = (type) => {
   setDisplayInfo();
-  if (type === 'github') {
-    isGitHubConfigEditing.value = false;
-  } else if (type === 'cache') {
+  if (type === 'cache') {
     isCacheConfigEditing.value = false;
   } else if (type === 'request') {
     isRequestConfigEditing.value = false;
@@ -1154,47 +673,9 @@ const exitEditMode = (type) => {
   }
   isEditLoading.value = false;
 };
-const toggleSyncPlatform = () => {
-  if (syncPlatformInput.value === 'gitlab') {
-    syncPlatformInput.value = ''
-    Toast.text(`已切换到 ${syncPlatformInput.value === 'gitlab' ? 'GitLab Snippet' : 'Gist'}`);
-  } else {
-      Dialog({
-        title: '切换同步平台',
-        content: 'GitLab Snippet 正在测试中, 相关文案仍然是 Gist, 请备份数据后使用',
-        popClass: 'auto-dialog',
-        okText: `使用 ${syncPlatformInput.value === 'gitlab' ? 'Gist' : ' Snippet'}`,
-        cancelText: '取消',
-        onOk: () => {
-          if (syncPlatformInput.value === 'gitlab') {
-            syncPlatformInput.value = ''
-          } else {
-            syncPlatformInput.value = 'gitlab'
-          }
-          Toast.text(`已切换到 ${syncPlatformInput.value === 'gitlab' ? 'GitLab Snippet' : 'Gist'}`);
-        },
-        closeOnPopstate: true,
-        lockScroll: false,
-      });
-  }
-
-  
-};
 const setDisplayInfo = () => {
-  syncPlatformInput.value = syncPlatform.value || "";
-  userInput.value = githubUser.value || "";
-  gistUploadInput.value = normalizeGistUploadMode(gistUpload.value);
-  gistUploadPickerValue.value = [gistUploadInput.value];
-  setDownloadTokenStrategyInput(
-    normalizeGistDownloadTokenStrategy(gistDownloadTokenStrategy.value),
-  );
-  ageSecretKeyInput.value = ageSecretKey.value || "";
   githubProxyInput.value = githubProxy.value || "";
-  githubApiUrlInput.value = githubApiUrl.value || "";
-  githubApiTimeoutInput.value = githubApiTimeout.value || "";
-  artifactSyncBatchSizeInput.value = artifactSyncBatchSize.value || "";
   githubProxyRegexInput.value = githubProxyRegex.value || "";
-  tokenInput.value = gistToken.value || "";
   uaInput.value = defaultUserAgent.value || "";
   flowUaInput.value = defaultFlowUserAgent.value || "";
   proxyInput.value = defaultProxy.value || "";
@@ -1208,27 +689,9 @@ const setDisplayInfo = () => {
   logsMaxCountInput.value = logsMaxCount.value ?? "";
 };
 
-// 同步 上传
-const downloadIsLoading = ref(false);
-const uploadIsLoading = ref(false);
+// 本地备份与恢复
 const restoreIsLoading = ref(false);
 const backupIsLoading = ref(false);
-const syncIsDisabled = computed(() => {
-  return (
-    uploadIsLoading.value ||
-    downloadIsLoading.value ||
-    !gistToken.value
-  );
-});
-
-const desText = computed(() => {
-  if (!gistToken.value) {
-    return [t(`myPage.placeholder.des`), ""];
-  } else {
-    if (!syncTime.value) return [t(`myPage.placeholder.haveNotDownload`), ""];
-    return [t(`myPage.placeholder.uploadTime`), butifyDate(syncTime.value)];
-  }
-});
 const downloadBackup = async () => {
   backupIsLoading.value = true;
   try {
@@ -1248,48 +711,39 @@ const downloadBackup = async () => {
     backupIsLoading.value = false;
   }
 };
-const fileChange = async (event) => {
-  const file = event.target.files[0];
-  if(!file) return
+const fileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
   try {
     restoreIsLoading.value = true;
-    const reader = new FileReader();
-    reader.readAsText(file);
-    reader.onload = async () => {
-      
-      const res = await useSettingsApi().restoreSettings({ content: String(reader.result) });
-      if (res?.data?.status === "success") {
-        await initStores(false, true, true);
-        showNotify({
-          type: "success",
-          title: t(`myPage.notify.restore.succeed`),
-        });
+    const res = await useSettingsApi().restoreSettings({ content: await file.text() });
+    if (res?.data?.status === "success") {
+      await initStores(false, true, true);
+      showNotify({
+        type: "success",
+        title: t(`myPage.notify.restore.succeed`),
+      });
 
-        if ("serviceWorker" in navigator) {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          for (let registration of registrations) {
-            await registration.unregister();
-          }
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
         }
-        if ("caches" in window) {
-          const cacheNames = await caches.keys();
-          for (let cacheName of cacheNames) {
-            await caches.delete(cacheName);
-          }
-        }
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } else {
-        throw new Error('restore failed')
       }
-    }
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        for (const cacheName of cacheNames) {
+          await caches.delete(cacheName);
+        }
+      }
 
-    reader.onerror = e => {
-      throw e
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } else {
+      throw new Error('restore failed');
     }
-    
   } catch (e) {
     showNotify({
       type: "danger",
@@ -1298,208 +752,15 @@ const fileChange = async (event) => {
     console.error(e);
   } finally {
     restoreIsLoading.value = false;
+    input.value = '';
   }
 };
-const upload = async() => {
-  try {
-    fileInput.value.click()
-  } catch (e) {
-    console.error(e);
-  }
-}
+const upload = () => fileInput.value?.click();
 
-const sync = async (query: "download" | "upload", options?: GistBackupSyncOptions) => {
-  switch (query) {
-    case "download":
-      downloadIsLoading.value = true;
-      break;
-    case "upload":
-      uploadIsLoading.value = true;
-      break;
-  }
-
-  const res = await useSettingsApi().syncSettings(query, options);
-
-  if (res?.data?.status === "success") {
-    switch (query) {
-      case "download":
-        await initStores(false, true, true);
-        break;
-      case "upload":
-        await useSettingsStore().fetchSettings();
-        break;
-    }
-    showNotify({
-      type: "success",
-      title: t(`myPage.notify.${query}.succeed`),
-    });
-    if (query === "download") {
-      if ("serviceWorker" in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (let registration of registrations) {
-          await registration.unregister();
-        }
-      }
-      if ("caches" in window) {
-        const cacheNames = await caches.keys();
-        for (let cacheName of cacheNames) {
-          await caches.delete(cacheName);
-        }
-      }
-      
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    }
-  }
-
-  downloadIsLoading.value = false;
-  uploadIsLoading.value = false;
-};
-
-const ensureGitHubConfigReadyForSync = (action: "upload" | "download") => {
-  if (!isGitHubConfigEditing.value) {
-    return true;
-  }
-
-  Dialog({
-    title: action === "upload" ? "请先保存 GitHub 配置" : "请先处理 GitHub 配置",
-    content: `当前 GitHub 配置正在编辑中，未保存的 Gist 配置不会用于本次${action === "upload" ? "上传" : "下载"}。\n\n请先保存或取消编辑后再继续。`,
-    popClass: "auto-dialog",
-    textAlign: "left",
-    okText: "知道了",
-    noCancelBtn: true,
-    closeOnPopstate: true,
-    lockScroll: false,
-  });
-
-  return false;
-};
-
-const uploadBtn = () => {
-  if (!ensureGitHubConfigReadyForSync("upload")) {
-    return;
-  }
-  const encode = gistUpload.value || 'base64';
-  sync('upload', { encode });
-  // Dialog({
-  //   title: '请选择',
-  //   content: '若选择明文, 将不会保留 GitHub Token. 若选择 Base64 编码, 将完整保留数据(后端版本必须 >= 2.19.85)',
-  //   footerDirection: 'vertical',
-  //   onCancel: () => {
-  //     sync('upload', {
-  //       encode: 'plaintext'
-  //     });
-  //   },
-  //   cancelText: '明文(将不会保留 GitHub Token)',
-  //   okText: 'Base64 编码上传',
-  //   onOk: () => {
-  //     sync('upload', {
-  //       encode: 'base64'
-  //     });
-  //   },
-  //   popClass: "auto-dialog",
-  //   closeOnPopstate: true,
-  //   lockScroll: false,
-  // });
-}
-const downloadBtn = () => {
-  if (!ensureGitHubConfigReadyForSync("download")) {
-    return;
-  }
-
-  const strategy = normalizeGistDownloadTokenStrategy(
-    gistDownloadTokenStrategy.value,
-  );
-
-  if (strategy !== "ask") {
-    downloadWithTokenStrategy(strategy);
-    return;
-  }
-
-  rememberDownloadTokenStrategy.value = false;
-  showDownloadTokenDialog.value = true;
-}
-
-const downloadWithTokenStrategy = async (
-  strategy: Exclude<DownloadTokenStrategy, "ask">,
-) => {
-  if (rememberDownloadTokenStrategy.value) {
-    const saveSucceeded = await settingsStore.changeSettings(
-      { gistDownloadTokenStrategy: strategy },
-      { notifySuccess: false },
-    );
-    if (!saveSucceeded) return;
-    setDownloadTokenStrategyInput(strategy);
-  }
-
-  await sync(
-    "download",
-    {
-      tokenStrategy: strategy,
-      keep: [
-        "settings.gistDownloadTokenStrategy",
-        ...(strategy === "keep" ? ["settings.gistToken"] : []),
-      ],
-    },
-  );
-};
 const githubProxyTips = () => {
   Dialog({
       title: '请填写完整 GitHub 加速代理地址',
-      content: '后端需 >= 2.21.75 才可完整使用下方正则匹配能力\n\n1. 该代理用于上传/下载 GitHub Gist\n\n2. 请填写完整地址, 如 https://a.com\n\n3. 需支持代理 https://api.github.com/gists\n\n4. 若同时配置下方的 GitHub 加速代理匹配正则, 匹配的所有远程资源 URL 会改写为\nhttps://a.com/原始URL\n\n测试方式:\n浏览器打开\nhttps://a.com/https://api.github.com/gists?per_page=1&page=1\n有正常的响应\n\n5. 使用自定义 GitHub API 地址后, GitHub 加速代理不会作用于 Gist API 请求\n\n6. 使用此方式时, 自行注意安全隐私问题',
-      popClass: 'auto-dialog',
-      textAlign: 'left',
-      okText: 'OK',
-      noCancelBtn: true,
-      closeOnPopstate: true,
-      lockScroll: false,
-    });
-};
-const githubApiUrlTips = () => {
-  Dialog({
-      title: 'GitHub API 地址',
-      content: `后端需 >= 2.22.21\n\n1. 默认为 ${DEFAULT_GITHUB_API_URL}\n\n2. 需使用 GitHub Gist 兼容接口\n\n3. 此时 GitHub 令牌里填入的是对应服务的 API Key 之类的\n\n4. 使用自定义 GitHub API 地址后, GitHub 加速代理不会作用于此处\n\n5. 项目推荐:\nEdgeGist: https://github.com/xream/EdgeGist\nLiteGist: https://github.com/lockcp/LiteGist`,
-      popClass: 'auto-dialog',
-      textAlign: 'left',
-      okText: 'OK',
-      cancelText: '查看 LiteGist',
-      noCancelBtn: true,
-      // onCancel: () => {
-      //   window.open('https://github.com/lockcp/LiteGist');
-      // },
-      closeOnPopstate: true,
-      lockScroll: false,
-    });
-};
-const githubApiTimeoutTips = () => {
-  Dialog({
-      title: 'GitHub API 请求超时',
-      content: 'GitHub API 请求可能比较慢, 可单独设置更长的超时时间。\n\n1. 单位为毫秒, 默认 10000\n\n2. 仅影响 GitHub/Gist API 请求\n\n3. 与请求配置里的默认超时相互独立',
-      popClass: 'auto-dialog',
-      textAlign: 'left',
-      okText: 'OK',
-      noCancelBtn: true,
-      closeOnPopstate: true,
-      lockScroll: false,
-    });
-};
-const gistAgeSecretKeyTips = () => {
-  Dialog({
-      title: 'Gist 备份 age 解密私钥',
-      content: '后端需 >= 2.29.0\n\n1. 选择 age 加密时只需要配置 age 解密私钥\n\n2. 上传备份时会从此私钥推导 age 加密公钥用于加密\n\n3. 下载恢复时会用此私钥解密 age 加密备份\n\n4. 请妥善保存私钥，丢失后无法恢复已加密备份',
-      popClass: 'auto-dialog',
-      textAlign: 'left',
-      okText: 'OK',
-      noCancelBtn: true,
-      closeOnPopstate: true,
-      lockScroll: false,
-    });
-};
-const artifactSyncBatchSizeTips = () => {
-  Dialog({
-      title: '同步上传分批大小',
-      content: '同步全部配置时, 每批上传几个配置文件。\n\n1. 默认 10\n\n2. 较小的值可降低 Gist 兼容 API 的单次请求压力, 但会增加请求次数',
+      content: '填写完整代理地址，例如 https://a.com。配置匹配正则后，匹配的远程资源下载地址会改写为 https://a.com/原始URL。',
       popClass: 'auto-dialog',
       textAlign: 'left',
       okText: 'OK',
@@ -1512,7 +773,7 @@ const githubProxyRegexExample = '^https?:\\/\\/.+\\.(githubusercontent|github)\\
 const githubProxyRegexTips = () => {
   Dialog({
       title: '按正则匹配下载链接',
-      content: `后端需 >= 2.21.75\n\n1. 需先配置上方 GitHub 加速代理, 本项才会生效\n\n2. 影响所有远程资源 URL, 不影响 Gist API 和头像逻辑\n\n3. 默认忽略大小写, 例如\n${githubProxyRegexExample}\n\n4. 会把匹配的下载地址改写为\nhttps://a.com/原始URL\n\n5. 使用此方式时, 自行注意安全隐私问题`,
+      content: `后端需 >= 2.21.75\n\n1. 需先配置上方 GitHub 加速代理, 本项才会生效\n\n2. 对匹配正则的远程资源 URL 生效\n\n3. 默认忽略大小写, 例如\n${githubProxyRegexExample}\n\n4. 会把匹配的下载地址改写为\nhttps://a.com/原始URL\n\n5. 使用此方式时, 自行注意安全隐私问题`,
       popClass: 'auto-dialog',
       textAlign: 'left',
       okText: 'OK',
@@ -1573,7 +834,7 @@ const timeoutTips = () => {
 const backendRequestConcurrencyTips = () => {
   Dialog({
       title: '后端请求并发数',
-      content: '后端需 >= 2.23.32\n\n控制后端发起外部请求时的并发数。默认 10；在代理 App 中建议不超过 20，过高可能增加连接数和内存压力。\n\n实际会用于远程资源下载，例如远程订阅、文件、脚本、预览、同步/定时同步等经后端下载工具发起的请求；也会用于订阅流量信息请求，例如 Subscription-Userinfo 的 HEAD/GET 请求。\n\n域名解析除外，它有自己的请求并发数。\n\n后端日志会输出 [Backend Request Concurrency]，包含 active、pending、limit、waitTime，方便调试。',
+      content: '后端需 >= 2.23.32\n\n控制后端发起外部请求时的并发数。默认 10；在代理 App 中建议不超过 20，过高可能增加连接数和内存压力。\n\n实际会用于远程资源下载，例如远程订阅、文件、脚本、预览等经后端下载工具发起的请求；也会用于订阅流量信息请求，例如 Subscription-Userinfo 的 HEAD/GET 请求。\n\n域名解析除外，它有自己的请求并发数。\n\n后端日志会输出 [Backend Request Concurrency]，包含 active、pending、limit、waitTime，方便调试。',
       popClass: 'auto-dialog',
       textAlign: 'left',
       okText: 'OK',
@@ -1701,9 +962,6 @@ watchEffect(() => {
     isInit.value = true;
   }
 });
-const setTag = (current) => {
-  storageType.value = current
-};
 </script>
 
 <style lang="scss" scoped>
@@ -1718,30 +976,10 @@ const setTag = (current) => {
   .profile-block {
     width: 100%;
 
-    .radio-wrapper {
+    .profile-toolbar {
       display: flex;
+      justify-content: flex-end;
       align-items: center;
-      
-
-      .tag {
-        font-size: 12px;
-        color: var(--second-text-color);
-        margin: 0px 5px;
-        padding: 7.5px 2.5px 4px;
-        cursor: pointer;
-        -webkit-user-select: none;
-        user-select: none;
-        flex-shrink: 0;
-      }
-      .current {
-        border-bottom: 1px solid var(--primary-color);
-        color: var(--primary-color);
-      }
-      .storage-language-switch {
-        margin-left: auto;
-        flex-shrink: 0;
-      }
-
     }
 
     .config-card {
@@ -1785,60 +1023,9 @@ const setTag = (current) => {
             opacity: 0.2;
             filter: brightness(var(--img-brightness));
           }
-          &.input-small-left-icon {
-            :deep(img) {
-              width: 14px;
-              height: 14px;
-            }
-          }
           :deep(.nut-icon-tips:before) {
             cursor: pointer;
           }
-          .input-action-icons {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-
-            :deep(.age-key-helper) {
-              justify-content: center;
-            }
-          }
-          .input-action-icon {
-            display: inline-flex;
-            width: 22px;
-            height: 22px;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            border: 0;
-            background: transparent;
-            color: var(--second-text-color);
-            cursor: pointer;
-
-            &:hover {
-              opacity: 1;
-            }
-
-            :deep(.nut-icon) {
-              color: inherit;
-            }
-
-            :deep(.nut-icon-tips:before) {
-              cursor: pointer;
-            }
-          }
-
-          &.picker-input {
-            cursor: pointer;
-
-            :deep(.nut-input__text),
-            :deep(input),
-            :deep(img),
-            :deep(.nut-icon) {
-              cursor: pointer;
-            }
-          }
-
           &:not(:first-child) {
             margin-top: 8px;
           }
@@ -1910,9 +1097,6 @@ const setTag = (current) => {
           }
         }
 
-        &.gist-avatar-wrapper p.title {
-          font-size: 16px;
-        }
       }
 
       .actions {
@@ -1967,26 +1151,4 @@ const setTag = (current) => {
   color: var(--lowest-text-color);
 }
 
-.download-token-dialog-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  .download-token-dialog-checkbox {
-    display: flex;
-    align-items: center;
-    align-self: center;
-    gap: 6px;
-    font-size: 13px;
-    white-space: nowrap;
-    cursor: pointer;
-
-    input {
-      width: 14px;
-      height: 14px;
-      margin: 0;
-      accent-color: var(--primary-color);
-    }
-  }
-}
 </style>

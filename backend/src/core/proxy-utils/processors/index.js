@@ -9,7 +9,7 @@ import lodash from 'lodash';
 import $ from '@/core/app';
 import { hex_md5 } from '@/vendor/md5';
 import { ProxyUtils } from '@/core/proxy-utils';
-import { produceArtifact } from '@/restful/sync';
+import { produceArtifact } from '@/utils/produce-artifact';
 import { isMihomoConfigFile } from '@/utils/file-type';
 import { SETTINGS_KEY } from '@/constants';
 import YAML from '@/utils/yaml';

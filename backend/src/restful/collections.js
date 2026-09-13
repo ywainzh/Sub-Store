@@ -5,8 +5,8 @@ import {
     updateByName,
 } from '@/utils/database';
 import { getCreateItemPosition } from '@/utils/create-item-position';
-import { COLLECTIONS_KEY, ARTIFACTS_KEY, FILES_KEY } from '@/constants';
-import { archiveCollection } from '@/utils/archive';
+import { COLLECTIONS_KEY, FILES_KEY } from '@/constants';
+import { validateDeleteMode } from '@/utils/delete-mode';
 import { failed, success } from '@/restful/response';
 import $ from '@/core/app';
 import { RequestInvalidError, ResourceNotFoundError } from '@/restful/errors';
@@ -97,16 +97,6 @@ function updateCollection(req, res) {
         $.info(`正在更新组合订阅：${name}...`);
 
         if (name !== newCol.name) {
-            // update all artifacts referring this collection
-            const allArtifacts = $.read(ARTIFACTS_KEY) || [];
-            for (const artifact of allArtifacts) {
-                if (
-                    artifact.type === 'collection' &&
-                    artifact.source === oldCol.name
-                ) {
-                    artifact.source = newCol.name;
-                }
-            }
             // update all files referring this collection
             const allFiles = $.read(FILES_KEY) || [];
             for (const file of allFiles) {
@@ -117,7 +107,6 @@ function updateCollection(req, res) {
                     file.sourceName = newCol.name;
                 }
             }
-            $.write(allArtifacts, ARTIFACTS_KEY);
             $.write(allFiles, FILES_KEY);
         }
 
@@ -140,13 +129,11 @@ function deleteCollection(req, res) {
     try {
         let { name } = req.params;
         $.info(`正在删除组合订阅：${name}`);
-        if (shouldArchiveDeletion(req.query.mode)) {
-            archiveCollection(name);
-        }
+        validateDeleteMode(req.query?.mode);
         deleteCollectionItem(name);
         success(res);
     } catch (error) {
-        failed(res, error);
+        failed(res, error, error.code === 'INVALID_DELETE_MODE' ? 400 : 500);
     }
 }
 
@@ -209,19 +196,6 @@ function deleteCollectionItem(name) {
     deleteByName(allCols, name);
     $.write(allCols, COLLECTIONS_KEY);
     return collection;
-}
-
-function shouldArchiveDeletion(mode) {
-    if (mode == null || mode === '' || mode === 'permanent') {
-        return false;
-    }
-    if (mode === 'archive') {
-        return true;
-    }
-    throw new RequestInvalidError(
-        'INVALID_DELETE_MODE',
-        `Unsupported delete mode: ${mode}`,
-    );
 }
 
 export { createCollectionItem, deleteCollectionItem };

@@ -16,18 +16,6 @@ export function useSettingsApi() {
         data,
       });
     },
-    syncSettings: (query: 'download' | 'upload', options?: GistBackupSyncOptions): AxiosPromise<MyAxiosRes> => {
-      return request({
-        url: `/api/utils/backup`,
-        method: 'get',
-        params: {
-          action: query,
-          keep: options?.keep?.join(','),
-          encode: options?.encode,
-          tokenStrategy: options?.tokenStrategy,
-        }
-      });
-    },
     downloadBackup: (): AxiosPromise<Blob> => {
       return request({
         url: '/api/storage',

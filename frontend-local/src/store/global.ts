@@ -10,7 +10,6 @@ export const useGlobalStore = defineStore('globalStore', {
   state: (): GlobalStoreState => {
     return {
       subProgressStyle: localStorage.getItem('subProgressStyle') || 'hidden',
-      gistUpload: localStorage.getItem('gistUpload') || 'base64',
       isLoading: true,
       isFlowFetching: true,
       fetchResult: false,
@@ -27,7 +26,6 @@ export const useGlobalStore = defineStore('globalStore', {
       isEditorCommon: localStorage.getItem('iseditorCommon') !== '1',
       isSimpleReicon: localStorage.getItem('isSimpleReicon') === '1',
       showFloatingRefreshButton: localStorage.getItem('showFloatingRefreshButton') === '1',
-      istabBar: localStorage.getItem('istabBar') === '1',
       istabBar2: localStorage.getItem('istabBar2') === '1',
       ishostApi: getHostAPIUrl(),
       savedPositions: {},
@@ -134,14 +132,6 @@ export const useGlobalStore = defineStore('globalStore', {
       }
       this.subProgressStyle = style;
     },
-    setGistUpload(style: string) {
-      if (style && style !== 'base64') {
-        localStorage.setItem('gistUpload', style);
-      } else {
-        localStorage.removeItem('gistUpload');
-      }
-      this.gistUpload = style;
-    },
     setBottomSafeArea(height: number) {
       this.bottomSafeArea = height;
     },
@@ -212,14 +202,6 @@ export const useGlobalStore = defineStore('globalStore', {
         localStorage.removeItem('showFloatingRefreshButton');
       }
       this.showFloatingRefreshButton = showFloatingRefreshButton;
-    },
-    settabBar(istabBar: boolean) {
-      if (istabBar) {
-        localStorage.setItem('istabBar', '1');
-      } else {
-        localStorage.removeItem('istabBar');
-      }
-      this.istabBar = istabBar;
     },
     settabBar2(istabBar2: boolean) {
       if (istabBar2) {

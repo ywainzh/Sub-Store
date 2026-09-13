@@ -7,7 +7,7 @@ import {
 } from '@/utils/database';
 import { getCreateItemPosition } from '@/utils/create-item-position';
 import { getFlowHeaders, normalizeFlowHeader } from '@/utils/flow';
-import { FILES_KEY, ARTIFACTS_KEY } from '@/constants';
+import { FILES_KEY } from '@/constants';
 import { failed, success } from '@/restful/response';
 import $ from '@/core/app';
 import {
@@ -15,8 +15,8 @@ import {
     ResourceNotFoundError,
     InternalServerError,
 } from '@/restful/errors';
-import { produceArtifact } from '@/restful/sync';
-import { archiveFile } from '@/utils/archive';
+import { produceArtifact } from '@/utils/produce-artifact';
+import { validateDeleteMode } from '@/utils/delete-mode';
 import { formatDateTime } from '@/utils';
 import { applyResponseTransformers } from '@/restful/response-transformer';
 import {
@@ -460,20 +460,6 @@ function updateFile(req, res) {
         normalizeEditorLanguageConfig(newFile);
         $.info(`正在更新文件：${name}...`);
 
-        if (name !== newFile.name) {
-            // update all artifacts referring this collection
-            const allArtifacts = $.read(ARTIFACTS_KEY) || [];
-            for (const artifact of allArtifacts) {
-                if (
-                    artifact.type === 'file' &&
-                    artifact.source === oldFile.name
-                ) {
-                    artifact.source = newFile.name;
-                }
-            }
-            $.write(allArtifacts, ARTIFACTS_KEY);
-        }
-
         updateByName(allFiles, name, newFile);
         $.write(allFiles, FILES_KEY);
         success(res, newFile);
@@ -493,13 +479,11 @@ function deleteFile(req, res) {
     try {
         let { name } = req.params;
         $.info(`正在删除文件：${name}`);
-        if (shouldArchiveDeletion(req.query.mode)) {
-            archiveFile(name);
-        }
+        validateDeleteMode(req.query?.mode);
         deleteFileItem(name);
         success(res);
     } catch (error) {
-        failed(res, error);
+        failed(res, error, error.code === 'INVALID_DELETE_MODE' ? 400 : 500);
     }
 }
 
@@ -564,19 +548,6 @@ function deleteFileItem(name) {
     deleteByName(allFiles, name);
     $.write(allFiles, FILES_KEY);
     return file;
-}
-
-function shouldArchiveDeletion(mode) {
-    if (mode == null || mode === '' || mode === 'permanent') {
-        return false;
-    }
-    if (mode === 'archive') {
-        return true;
-    }
-    throw new RequestInvalidError(
-        'INVALID_DELETE_MODE',
-        `Unsupported delete mode: ${mode}`,
-    );
 }
 
 function buildRuntimeFile(

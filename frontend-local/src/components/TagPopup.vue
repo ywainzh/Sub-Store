@@ -79,7 +79,6 @@
 import { ref, watch, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useSubsStore } from "@/store/subs";
-import { useArtifactsStore } from "@/store/artifacts";
 import { normalizeTagArray } from "@/utils/shareTags";
 import draggable from "vuedraggable";
 
@@ -87,9 +86,7 @@ import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
 const subsStore = useSubsStore();
-const artifactsStore = useArtifactsStore();
 const { hasSubs, hasCollections, subs, collections, hasFiles, files, shares } = storeToRefs(subsStore);
-const { artifacts } = storeToRefs(artifactsStore);
 const hasUntagged = ref(false);
 const props = defineProps({
   visible: {
@@ -148,10 +145,6 @@ const getTags = () => {
     allTags.value = []
     return []
   }
-  if(props.type === 'artifact' && artifacts.value.length === 0) {
-    allTags.value = []
-    return []
-  }
   if(props.type === 'share' && shares.value.length === 0) {
     allTags.value = []
     return []
@@ -185,16 +178,6 @@ const getTags = () => {
     files.value.forEach(file => {
       if (Array.isArray(file.tag) && file.tag.length > 0) {
         file.tag.forEach(i => {
-          set.add(i)
-        });
-      } else {
-        hasUntagged.value = true
-      }
-    })
-  } else if (props.type === 'artifact') {
-    artifacts.value.forEach(artifact => {
-      if (Array.isArray(artifact.tag) && artifact.tag.length > 0) {
-        artifact.tag.forEach(i => {
           set.add(i)
         });
       } else {

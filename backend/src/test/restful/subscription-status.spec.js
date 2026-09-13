@@ -114,7 +114,7 @@ describe('subscription availability and automatic recovery', function () {
         status = require('@/utils/subscription-status');
         flow = require('@/utils/flow');
         cache = require('@/utils/headers-resource-cache').default;
-        ({ produceArtifact } = require('@/restful/sync'));
+        ({ produceArtifact } = require('@/utils/produce-artifact'));
         registerSubs = require('@/restful/subscriptions').default;
         registerCols = require('@/restful/collections').default;
         registerDownloads = require('@/restful/download').default;

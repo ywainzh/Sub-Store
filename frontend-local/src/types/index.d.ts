@@ -1,6 +1,4 @@
 type SubsType = 'sub' | 'collection';
-type DeleteMode = 'archive' | 'permanent';
-type ArchiveItemType = 'sub' | 'col' | 'file' | 'artifact' | 'share';
 
 type MyAxiosRes = ErrorResponse | SucceedResponse;
 

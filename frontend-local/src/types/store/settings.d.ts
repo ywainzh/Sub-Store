@@ -4,24 +4,11 @@ type EditorCommonDisplayMode = 'expanded' | 'collapsed' | 'hidden';
 type EditorSectionFoldMode = 'expanded' | 'collapsed';
 type EditorGroupingMode = 'edit-only' | 'disabled' | 'always';
 type ActionButtonsDisplayMode = 'responsive' | 'compact' | 'loose';
-type GistUploadMode = 'base64' | 'plaintext' | 'age';
-type DownloadTokenStrategy = 'ask' | 'overwrite' | 'keep';
 type ImageFit = import('@/utils/iconFit').ImageFit;
-
-interface GistBackupSyncOptions {
-  keep?: string[];
-  encode?: GistUploadMode;
-  tokenStrategy?: Exclude<DownloadTokenStrategy, 'ask'>;
-}
 
 type SettingsStoreState = SettingsBase & SettingsPostData;
 
 interface SettingsBase {
-  syncTime: number;
-  avatarUrl: string;
-  artifactStore: string;
-  artifactStoreStatus?: string;
-  ageSecretKey: string;
   hasFetchedSettings: boolean;
   hasRemoteAppearanceSetting: boolean;
   hasRemoteEditorGroupingMode: boolean;
@@ -31,15 +18,8 @@ interface SettingsBase {
 }
 
 interface SettingsPostData {
-  syncPlatform?: string;
-  gistToken?: string;
-  "age-secret-key"?: string;
   githubProxy?: string;
-  githubApiUrl?: string;
-  githubApiTimeout?: string;
-  artifactSyncBatchSize?: string;
   githubProxyRegex?: string;
-  githubUser?: string;
   defaultProxy?: string;
   defaultUserAgent?: string;
   defaultFlowUserAgent?: string;
@@ -57,8 +37,6 @@ interface SettingsPostData {
     dark: CustomTheme;
     light: CustomTheme;
   };
-  gistUpload?: GistUploadMode;
-  gistDownloadTokenStrategy?: DownloadTokenStrategy;
   appearanceSetting?: {
     isSimpleMode?: boolean; // 简洁模式
     isLeftRight?: boolean; // 卡片右滑呼出
@@ -79,7 +57,6 @@ interface SettingsPostData {
     createItemPosition?: CreateItemPosition; // 新建条目插入位置
     displayPreviewInWebPage?: boolean; // 在网页中预览
     invalidShareFakeNode?: boolean; // 无效分享返回假节点(防客户端缓存)
-    istabBar?: boolean; // 隐藏 "Gist 同步" 页
     istabBar2?: boolean; // 隐藏 "文件" 页
     istabBar3?: boolean; // 隐藏 "分享" 页
     subProgressStyle?: string; // 订阅进度样式

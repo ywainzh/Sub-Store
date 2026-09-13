@@ -253,7 +253,7 @@
   import { createGithubProxyUrlRewriter } from '@/utils/githubProxy';
   import { resolveImageFit } from '@/utils/iconFit';
   import { isMobile } from '@/utils/isMobile';
-  import { openManagedDeleteDialog } from '@/utils/archive';
+  import { openDeleteDialog } from '@/utils/deleteDialog';
   import FilePreview from '@/views/FilePreview.vue';
   import { Dialog, Toast } from '@nutui/nutui';
   import dayjs from 'dayjs';
@@ -271,9 +271,6 @@
 
   const { t } = useI18n();
   const { env } = useBackend();
-  const isArchiveEnabled = computed(() => {
-    return env.value?.feature?.archive;
-  });
 
   const props = defineProps<{
     type: 'sub' | 'collection' | 'file';
@@ -556,8 +553,8 @@
     }
   };
 
-  const onDeleteConfirm = async (mode: DeleteMode = 'permanent') => {
-    await subsStore.deleteFile(name, mode);
+  const onDeleteConfirm = async () => {
+    await subsStore.deleteFile(name);
     // Notify.danger(t('subPage.deleteSub.succeedNotify'), { duration: 1500 });
   };
 
@@ -586,18 +583,12 @@
   };
 
   const onClickDelete = () => {
-    openManagedDeleteDialog({
-      enabled: isArchiveEnabled.value,
-      managedTitle: t('archivePage.liveDelete.title'),
-      managedContent: t('archivePage.liveDelete.desc', { displayName }),
-      managedCancelText: t('archivePage.liveDelete.btn.archive'),
-      managedOkText: t('archivePage.liveDelete.btn.permanent'),
-      legacyTitle: t('subPage.deleteSub.title'),
-      legacyContent: t('subPage.deleteSub.desc', { displayName }),
-      legacyCancelText: t('subPage.deleteSub.btn.cancel'),
-      legacyOkText: t('subPage.deleteSub.btn.confirm'),
-      onArchive: () => onDeleteConfirm('archive'),
-      onPermanent: () => onDeleteConfirm('permanent'),
+    openDeleteDialog({
+      title: t('subPage.deleteSub.title'),
+      content: t('subPage.deleteSub.desc', { displayName }),
+      cancelText: t('subPage.deleteSub.btn.cancel'),
+      confirmText: t('subPage.deleteSub.btn.confirm'),
+      onConfirm: () => onDeleteConfirm(),
     });
   };
 

@@ -4,25 +4,16 @@ import express from '@/vendor/express';
 import $ from '@/core/app';
 import migrate from '@/utils/migration';
 import download, { downloadFile } from '@/utils/download';
-import {
-    syncArtifacts,
-    produceArtifact,
-    syncArtifactItem,
-} from '@/restful/sync';
-import { gistBackupAction } from '@/restful/miscs';
+import { produceArtifact } from '@/utils/produce-artifact';
 import { SETTINGS_KEY } from '@/constants';
-import { startArtifactCronJobs } from '@/utils/artifact-cron';
 import { startSubscriptionChecks } from '@/utils/subscription-status';
 import { createFrontendStaticMiddleware } from '@/utils/frontend-static';
 
 import registerSubscriptionRoutes from './subscriptions';
 import registerCollectionRoutes from './collections';
-import registerArtifactRoutes from './artifacts';
 import registerFileRoutes from './file';
 import registerTokenRoutes from './token';
-import registerArchiveRoutes from './archives';
 import registerModuleRoutes from './module';
-import registerSyncRoutes from './sync';
 import registerDownloadRoutes from './download';
 import registerSettingRoutes from './settings';
 import registerPreviewRoutes from './preview';
@@ -143,12 +134,9 @@ export default function serve() {
     registerPreviewRoutes($app);
     registerSortingRoutes($app);
     registerSettingRoutes($app);
-    registerArtifactRoutes($app);
     registerFileRoutes($app);
     registerTokenRoutes($app);
-    registerArchiveRoutes($app);
     registerModuleRoutes($app);
-    registerSyncRoutes($app);
     registerNodeInfoRoutes($app);
     registerMiscRoutes($app);
     registerParserRoutes($app);
@@ -158,48 +146,8 @@ export default function serve() {
     $app.start();
 
     if ($.env.isNode) {
-        startArtifactCronJobs(syncArtifactItem);
         startSubscriptionChecks();
 
-        // Deprecated: SUB_STORE_BACKEND_CRON, SUB_STORE_CRON
-        const backend_sync_cron = eval(
-            'process.env.SUB_STORE_BACKEND_SYNC_CRON',
-        );
-
-        if (backend_sync_cron) {
-            $.info(`[SYNC CRON] ${backend_sync_cron} enabled`);
-            const { CronJob } = eval(`require("cron")`);
-            new CronJob(
-                backend_sync_cron,
-                async function () {
-                    try {
-                        $.info(`[SYNC CRON] ${backend_sync_cron} started`);
-                        await syncArtifacts({ skipCronArtifacts: true });
-                        $.info(`[SYNC CRON] ${backend_sync_cron} finished`);
-                    } catch (e) {
-                        $.error(
-                            `[SYNC CRON] ${backend_sync_cron} error: ${
-                                e.message ?? e
-                            }`,
-                        );
-                    }
-                }, // onTick
-                null, // onComplete
-                true, // start
-                // 'Asia/Shanghai' // timeZone
-            );
-        } else {
-            if (eval('process.env.SUB_STORE_BACKEND_CRON')) {
-                $.error(
-                    `[SYNC CRON] SUB_STORE_BACKEND_CRON 已弃用, 请使用 SUB_STORE_BACKEND_SYNC_CRON`,
-                );
-            }
-            if (eval('process.env.SUB_STORE_CRON')) {
-                $.error(
-                    `[SYNC CRON] SUB_STORE_CRON 已弃用, 请使用 SUB_STORE_BACKEND_SYNC_CRON`,
-                );
-            }
-        }
         // 格式: 0 */2 * * *,sub,a;0 */3 * * *,col,b
         // 每 2 小时处理一次单条订阅 a, 每 3 小时处理一次组合订阅 b
         const produce_cron = eval('process.env.SUB_STORE_PRODUCE_CRON');
@@ -237,62 +185,6 @@ export default function serve() {
                         // 'Asia/Shanghai' // timeZone
                     );
                 });
-        }
-        const backend_download_cron = eval(
-            'process.env.SUB_STORE_BACKEND_DOWNLOAD_CRON',
-        );
-        if (backend_download_cron) {
-            $.info(`[DOWNLOAD CRON] ${backend_download_cron} enabled`);
-            const { CronJob } = eval(`require("cron")`);
-            new CronJob(
-                backend_download_cron,
-                async function () {
-                    try {
-                        $.info(
-                            `[DOWNLOAD CRON] ${backend_download_cron} started`,
-                        );
-                        await gistBackupAction('download');
-                        $.info(
-                            `[DOWNLOAD CRON] ${backend_download_cron} finished`,
-                        );
-                    } catch (e) {
-                        $.error(
-                            `[DOWNLOAD CRON] ${backend_download_cron} error: ${
-                                e.message ?? e
-                            }`,
-                        );
-                    }
-                }, // onTick
-                null, // onComplete
-                true, // start
-                // 'Asia/Shanghai' // timeZone
-            );
-        }
-        const backend_upload_cron = eval(
-            'process.env.SUB_STORE_BACKEND_UPLOAD_CRON',
-        );
-        if (backend_upload_cron) {
-            $.info(`[UPLOAD CRON] ${backend_upload_cron} enabled`);
-            const { CronJob } = eval(`require("cron")`);
-            new CronJob(
-                backend_upload_cron,
-                async function () {
-                    try {
-                        $.info(`[UPLOAD CRON] ${backend_upload_cron} started`);
-                        await gistBackupAction('upload');
-                        $.info(`[UPLOAD CRON] ${backend_upload_cron} finished`);
-                    } catch (e) {
-                        $.error(
-                            `[UPLOAD CRON] ${backend_upload_cron} error: ${
-                                e.message ?? e
-                            }`,
-                        );
-                    }
-                }, // onTick
-                null, // onComplete
-                true, // start
-                // 'Asia/Shanghai' // timeZone
-            );
         }
         const mmdb_cron = eval('process.env.SUB_STORE_MMDB_CRON');
         const countryFile = eval('process.env.SUB_STORE_MMDB_COUNTRY_PATH');
@@ -508,11 +400,11 @@ export default function serve() {
                             }
                         } catch (err) {
                             $.error(
-                                `Gist 备份文件校验失败, 无法还原\nReason: ${
+                                `备份文件校验失败, 无法还原\nReason: ${
                                     err.message ?? err
                                 }`,
                             );
-                            throw new Error('Gist 备份文件校验失败, 无法还原');
+                            throw new Error('备份文件校验失败, 无法还原');
                         }
                     }
                     if (data_url_post) {

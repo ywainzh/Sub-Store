@@ -16,7 +16,6 @@ const NARROW_MODE_LIST_PAGE_VIEW_MODE_STORAGE_KEY = "appearanceSetting.listPageV
 const WIDE_SCREEN_NARROW_MODE_STORAGE_KEY = "appearanceSetting.useNarrowModeOnWideScreen";
 const EDITOR_GROUPING_MODE_STORAGE_KEY = "appearanceSetting.editorGroupingMode";
 const SIMPLE_MODE_CACHE_STORAGE_KEY = "appearanceSetting.isSimpleMode";
-const TAB_BAR_CACHE_STORAGE_KEY = "appearanceSetting.istabBar";
 const TAB_BAR2_CACHE_STORAGE_KEY = "appearanceSetting.istabBar2";
 const TAB_BAR3_CACHE_STORAGE_KEY = "appearanceSetting.istabBar3";
 const LEGACY_APPEARANCE_STORAGE_KEYS = [
@@ -27,7 +26,6 @@ const LEGACY_APPEARANCE_STORAGE_KEYS = [
   "iseditorCommon",
   "isSimpleReicon",
   "showFloatingRefreshButton",
-  "istabBar",
   "istabBar2",
   "subProgressStyle",
 ];
@@ -38,14 +36,6 @@ const normalizeSettingInputValue = (value: unknown) => {
 
 const getSettingsErrorMessage = (data?: MyAxiosRes) => {
   return data?.status === "failed" ? data.error?.message : "";
-};
-
-export const normalizeGistDownloadTokenStrategy = (
-  value: unknown,
-): DownloadTokenStrategy => {
-  return value === "overwrite" || value === "keep" || value === "ask"
-    ? value
-    : "ask";
 };
 
 const createAppearanceSettingPatch = (
@@ -123,15 +113,13 @@ const getCachedSimpleMode = () => {
 };
 
 const hasCachedAppearanceNavigationSetting = () => {
-  return getCachedAppearanceBoolean(TAB_BAR_CACHE_STORAGE_KEY, "istabBar") !== undefined
-    || getCachedAppearanceBoolean(TAB_BAR2_CACHE_STORAGE_KEY, "istabBar2") !== undefined
+  return getCachedAppearanceBoolean(TAB_BAR2_CACHE_STORAGE_KEY, "istabBar2") !== undefined
     || getCachedAppearanceBoolean(TAB_BAR3_CACHE_STORAGE_KEY, "istabBar3") !== undefined;
 };
 
 const syncCachedAppearanceNavigationSetting = (
   appearanceSetting: SettingsPostData["appearanceSetting"],
 ) => {
-  localStorage.setItem(TAB_BAR_CACHE_STORAGE_KEY, appearanceSetting?.istabBar ? "1" : "0");
   localStorage.setItem(TAB_BAR2_CACHE_STORAGE_KEY, appearanceSetting?.istabBar2 ? "1" : "0");
   localStorage.setItem(TAB_BAR3_CACHE_STORAGE_KEY, appearanceSetting?.istabBar3 ? "1" : "0");
 };
@@ -212,15 +200,8 @@ const normalizeEditorGroupingMode = (
 export const useSettingsStore = defineStore("settingsStore", {
   state: (): SettingsStoreState => {
     return {
-      syncPlatform: "",
-      gistToken: "",
-      ageSecretKey: "",
       githubProxy: "",
-      githubApiUrl: "",
-      githubApiTimeout: "",
-      artifactSyncBatchSize: "",
       githubProxyRegex: "",
-      githubUser: "",
       defaultUserAgent: "",
       defaultFlowUserAgent: "",
       defaultProxy: "",
@@ -232,7 +213,6 @@ export const useSettingsStore = defineStore("settingsStore", {
       headersCacheTtl: "",
       scriptCacheTtl: "",
       logsMaxCount: "",
-      syncTime: 0,
       theme: {
         auto: true,
         name: "light",
@@ -259,7 +239,6 @@ export const useSettingsStore = defineStore("settingsStore", {
         createItemPosition: "bottom",
         displayPreviewInWebPage: true,
         invalidShareFakeNode: false,
-        istabBar: getCachedAppearanceBoolean(TAB_BAR_CACHE_STORAGE_KEY, "istabBar") ?? false,
         istabBar2: getCachedAppearanceBoolean(TAB_BAR2_CACHE_STORAGE_KEY, "istabBar2") ?? false,
         istabBar3: getCachedAppearanceBoolean(TAB_BAR3_CACHE_STORAGE_KEY, "istabBar3") ?? false,
         subProgressStyle: "hidden",
@@ -268,11 +247,6 @@ export const useSettingsStore = defineStore("settingsStore", {
         listPageViewModeInWideScreenNarrowMode: getCachedListPageViewMode(NARROW_MODE_LIST_PAGE_VIEW_MODE_STORAGE_KEY),
         useNarrowModeOnWideScreen: getCachedWideScreenNarrowMode(),
       },
-      gistUpload: "base64",
-      gistDownloadTokenStrategy: "ask",
-      avatarUrl: "",
-      artifactStore: "",
-      artifactStoreStatus: "",
       hasFetchedSettings: false,
       hasRemoteAppearanceSetting: false,
       hasRemoteEditorGroupingMode: false,
@@ -320,7 +294,6 @@ export const useSettingsStore = defineStore("settingsStore", {
       this.appearanceSetting.createItemPosition = appearanceSetting?.createItemPosition ?? "bottom";
       this.appearanceSetting.displayPreviewInWebPage = appearanceSetting?.displayPreviewInWebPage ?? true;
       this.appearanceSetting.invalidShareFakeNode = appearanceSetting?.invalidShareFakeNode ?? false;
-      this.appearanceSetting.istabBar = appearanceSetting?.istabBar ?? "";
       this.appearanceSetting.istabBar2 = appearanceSetting?.istabBar2 ?? "";
       this.appearanceSetting.istabBar3 = appearanceSetting?.istabBar3 ?? false;
       this.appearanceSetting.subProgressStyle = appearanceSetting?.subProgressStyle ?? "hidden";
@@ -357,15 +330,8 @@ export const useSettingsStore = defineStore("settingsStore", {
       const { showNotify } = useAppNotifyStore();
       const res = await runFrontendRequestTask(() => settingsApi.getSettings(), "settings.getSettings");
       if (res?.data?.status === "success" && res?.data?.data) {
-        this.syncPlatform = res.data.data.syncPlatform || "";
-        this.gistToken = res.data.data.gistToken || "";
-        this.ageSecretKey = res.data.data["age-secret-key"] || "";
         this.githubProxy = res.data.data.githubProxy || "";
-        this.githubApiUrl = normalizeSettingInputValue(res.data.data.githubApiUrl);
-        this.githubApiTimeout = normalizeSettingInputValue(res.data.data.githubApiTimeout);
-        this.artifactSyncBatchSize = normalizeSettingInputValue(res.data.data.artifactSyncBatchSize);
         this.githubProxyRegex = res.data.data.githubProxyRegex || "";
-        this.githubUser = res.data.data.githubUser || "";
         this.defaultProxy = res.data.data.defaultProxy || "";
         this.defaultUserAgent = res.data.data.defaultUserAgent || "";
         this.defaultFlowUserAgent = res.data.data.defaultFlowUserAgent || "";
@@ -377,10 +343,6 @@ export const useSettingsStore = defineStore("settingsStore", {
         this.headersCacheTtl = res.data.data.headersCacheTtl || "";
         this.scriptCacheTtl = res.data.data.scriptCacheTtl || "";
         this.logsMaxCount = normalizeSettingInputValue(res.data.data.logsMaxCount);
-        this.syncTime = res.data.data.syncTime || 0;
-        this.avatarUrl = res.data.data.avatarUrl || "";
-        this.artifactStore = res.data.data.artifactStore || "";
-        this.artifactStoreStatus = res.data.data.artifactStoreStatus || "";
 
         this.theme.auto = res.data.data.theme?.auto ?? true;
         this.theme.name = res.data.data.theme?.name ?? "light";
@@ -391,10 +353,6 @@ export const useSettingsStore = defineStore("settingsStore", {
         this.hasRemoteAppearanceSetting = hasRemoteAppearanceSetting(res.data.data.appearanceSetting);
         this.hasRemoteEditorGroupingMode = hasRemoteEditorGroupingMode(res.data.data.appearanceSetting);
         this.applyAppearanceSetting(res.data.data.appearanceSetting);
-        this.gistUpload = res.data.data?.gistUpload ?? "base64";
-        this.gistDownloadTokenStrategy = normalizeGistDownloadTokenStrategy(
-          res.data.data.gistDownloadTokenStrategy,
-        );
       } else {
         this.hasFetchedSettings = false;
         showNotify({
@@ -410,15 +368,8 @@ export const useSettingsStore = defineStore("settingsStore", {
       const { showNotify } = useAppNotifyStore();
       const res = await settingsApi.setSettings(data);
       if (res?.data?.status === "success" && res?.data?.data) {
-        this.syncPlatform = res.data.data.syncPlatform || "";
-        this.gistToken = res.data.data.gistToken || "";
-        this.ageSecretKey = res.data.data["age-secret-key"] || "";
         this.githubProxy = res.data.data.githubProxy || "";
-        this.githubApiUrl = normalizeSettingInputValue(res.data.data.githubApiUrl);
-        this.githubApiTimeout = normalizeSettingInputValue(res.data.data.githubApiTimeout);
-        this.artifactSyncBatchSize = normalizeSettingInputValue(res.data.data.artifactSyncBatchSize);
         this.githubProxyRegex = res.data.data.githubProxyRegex || "";
-        this.githubUser = res.data.data.githubUser || "";
         this.defaultProxy = res.data.data.defaultProxy || "";
         this.defaultUserAgent = res.data.data.defaultUserAgent || "";
         this.defaultFlowUserAgent = res.data.data.defaultFlowUserAgent || "";
@@ -430,13 +381,6 @@ export const useSettingsStore = defineStore("settingsStore", {
         this.headersCacheTtl = res.data.data.headersCacheTtl || "";
         this.scriptCacheTtl = res.data.data.scriptCacheTtl || "";
         this.logsMaxCount = normalizeSettingInputValue(res.data.data.logsMaxCount);
-        this.avatarUrl = res.data.data.avatarUrl || "";
-        this.artifactStore = res.data.data.artifactStore || "";
-        this.artifactStoreStatus = res.data.data.artifactStoreStatus || "";
-        this.gistUpload = res.data.data.gistUpload || "base64";
-        this.gistDownloadTokenStrategy = normalizeGistDownloadTokenStrategy(
-          res.data.data.gistDownloadTokenStrategy,
-        );
         if (options?.notifySuccess !== false) {
           showNotify({ type: "success", title: t(`myPage.notify.save.succeed`) });
         }
@@ -460,7 +404,6 @@ export const useSettingsStore = defineStore("settingsStore", {
         isEditorCommon,
         isSimpleReicon,
         showFloatingRefreshButton,
-        istabBar,
         istabBar2,
         subProgressStyle,
       } = globalStore;
@@ -485,7 +428,6 @@ export const useSettingsStore = defineStore("settingsStore", {
         editorGroupingMode,
         isSimpleReicon: isSimpleReicon ?? false,
         showFloatingRefreshButton: showFloatingRefreshButton ?? false,
-        istabBar: istabBar ?? false,
         istabBar2: istabBar2 ?? false,
         istabBar3: cachedHideShareTab ?? this.appearanceSetting.istabBar3 ?? false,
         subProgressStyle: subProgressStyle ?? "hidden",
@@ -529,7 +471,6 @@ export const useSettingsStore = defineStore("settingsStore", {
       globalStore.isEditorCommon = true;
       globalStore.setSimpleReicon(false);
       globalStore.setShowFloatingRefreshButton(false);
-      globalStore.settabBar(false);
       globalStore.settabBar2(false);
       globalStore.setSubProgressStyle('hidden');
     },

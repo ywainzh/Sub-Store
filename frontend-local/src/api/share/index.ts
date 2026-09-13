@@ -15,12 +15,11 @@ export function useShareApi() {
       token: string,
       type: string,
       name: string,
-      mode?: DeleteMode,
     ): AxiosPromise<MyAxiosRes> => {
       return request({
         url: `/api/token/${encodeURIComponent(token)}`,
         method: "delete",
-        params: mode ? { type, name, mode } : { type, name },
+        params: { type, name },
       });
     },
     getShares: (type?: string, name?: string): AxiosPromise<MyAxiosRes> => {

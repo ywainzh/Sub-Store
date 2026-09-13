@@ -13,12 +13,10 @@ interface GlobalStoreState {
   isEditorCommon: boolean;
   isSimpleReicon: boolean;
   showFloatingRefreshButton: boolean;
-  istabBar: boolean;
   istabBar2: boolean;
   ishostApi: string;
   savedPositions: any;
   subProgressStyle: any;
-  gistUpload: any;
   defaultIconCollection: string;
   defaultIconCollections?: any;
   customIconCollections?: any[];

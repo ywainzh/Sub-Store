@@ -127,7 +127,7 @@ import { useHostAPI } from "@/hooks/useHostAPI";
 import { useAppNotifyStore } from "@/store/appNotify";
 import { useSettingsStore } from "@/store/settings";
 import { useSubsStore } from "@/store/subs";
-import { openManagedDeleteDialog } from "@/utils/archive";
+import { openDeleteDialog } from "@/utils/deleteDialog";
 import { createGithubProxyUrlRewriter } from "@/utils/githubProxy";
 import { resolveImageFit } from "@/utils/iconFit";
 import {
@@ -147,9 +147,6 @@ const props = defineProps<{
 }>();
 const { t } = useI18n();
 const { env } = useBackend();
-const isArchiveEnabled = computed(() => {
-  return env.value?.feature?.archive;
-});
 const settingsStore = useSettingsStore();
 const subsStore = useSubsStore();
 const { appearanceSetting, githubProxy, githubProxyRegex } = storeToRefs(settingsStore);
@@ -277,8 +274,8 @@ const shareIconFit = computed(() => {
   return resolveImageFit(shareIconState.value.iconFit, appearanceSetting.value.iconFit);
 });
 
-const onDeleteConfirm = async (mode: DeleteMode = "permanent") => {
-  await subsStore.deleteShare(token.value, type.value, name.value, mode);
+const onDeleteConfirm = async () => {
+  await subsStore.deleteShare(token.value, type.value, name.value);
 };
 
 const onClickEdit = () => {
@@ -343,22 +340,14 @@ const onClickDelete = () => {
   if (props.disabled) {
     return;
   }
-  openManagedDeleteDialog({
-    enabled: isArchiveEnabled.value,
-    managedTitle: t("archivePage.liveDelete.title"),
-    managedContent: t("archivePage.liveDelete.desc", {
-      displayName: displayName.value || name.value,
-    }),
-    managedCancelText: t("archivePage.liveDelete.btn.archive"),
-    managedOkText: t("archivePage.liveDelete.btn.permanent"),
-    legacyTitle: t("sharePage.deleteShare.title"),
-    legacyContent: t("sharePage.deleteShare.desc", {
+  openDeleteDialog({
+    title: t("sharePage.deleteShare.title"),
+    content: t("sharePage.deleteShare.desc", {
       displayName: name.value,
     }),
-    legacyCancelText: t("sharePage.deleteShare.btn.cancel"),
-    legacyOkText: t("sharePage.deleteShare.btn.confirm"),
-    onArchive: () => onDeleteConfirm("archive"),
-    onPermanent: () => onDeleteConfirm("permanent"),
+    cancelText: t("sharePage.deleteShare.btn.cancel"),
+    confirmText: t("sharePage.deleteShare.btn.confirm"),
+    onConfirm: () => onDeleteConfirm(),
   });
 };
 
@@ -407,7 +396,7 @@ const onClickPreviews = () => {
       displayPreviewInWebPageLabel: t("moreSettingPage.displayPreviewInWebPage"),
       tipsTitle: t("subPage.panel.tips.title"),
       tipsContent: `${t("subPage.panel.tips.content")}\n${t(
-        "syncPage.addArtForm.includeUnsupportedProxy.tips.content",
+        "resourceOptions.includeUnsupportedProxy.tips.content",
       )}`,
       desc: t("subPage.panel.tips.desc"),
       tipsOkText: t("subPage.panel.tips.ok"),

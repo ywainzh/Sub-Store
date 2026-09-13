@@ -9,7 +9,7 @@ import {
     RequestInvalidError,
     ResourceNotFoundError,
 } from '@/restful/errors';
-import { produceArtifact } from '@/restful/sync';
+import { produceArtifact } from '@/utils/produce-artifact';
 import { applyResponseTransformers } from '@/restful/response-transformer';
 import {
     applyAgeOutputEncryption,

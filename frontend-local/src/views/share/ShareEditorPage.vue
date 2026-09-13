@@ -67,7 +67,7 @@
             :rules="[
               {
                 required: true,
-                message: $t(`syncPage.addArtForm.source.isRequired`),
+                message: $t(`resourceOptions.source.isRequired`),
               },
             ]"
           >
@@ -76,7 +76,7 @@
               :class="{ 'source-input-disabled': isSourceSelectorDisabled }"
               :border="false"
               input-align="right"
-              :placeholder="$t(`syncPage.addArtForm.source.placeholder`)"
+              :placeholder="$t(`resourceOptions.source.placeholder`)"
               v-model="sourceInput"
               readonly
               :right-icon="isSourceSelectorDisabled ? undefined : 'rect-right'"
@@ -423,7 +423,7 @@
 
     <Teleport to="#ztop">
       <nut-cascader
-        :title="$t('syncPage.selectSource.title')"
+        :title="$t('resourceOptions.source.title')"
         v-model:visible="sourceSelectorIsVisible"
         v-model="sourceModel"
         @change="sourceChange"
@@ -1405,7 +1405,7 @@ const handleCopyShare = async (isNotify: boolean = true) => {
 const getSubmitParams = async (): Promise<ShareToken | null> => {
   if (!selectedSourceType.value || !normalizedSourceName.value) {
     focusShareContentTab();
-    Toast.warn(t("syncPage.addArtForm.source.isRequired"));
+    Toast.warn(t("resourceOptions.source.isRequired"));
     return null;
   }
 

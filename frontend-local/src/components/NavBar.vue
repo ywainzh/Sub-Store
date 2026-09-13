@@ -11,8 +11,6 @@
       <nut-navbar
         @on-click-back="back"
         :title="currentTitle"
-        :tit-icon="currentTitleWhetherAsk"
-        @on-click-icon="onClickNavbarIcon"
       >
         <template #left>
           <div v-if="isLogsOverlayOpen" class="nav-leading-placeholder" />
@@ -186,7 +184,6 @@ import { useGlobalStore } from "@/store/global";
 import { useListViewMode } from "@/hooks/useListViewMode";
 import { useSystemStore } from "@/store/system";
 import { useSettingsStore } from '@/store/settings';
-import { useArchiveStore } from "@/store/archive";
 import { useLogsOverlayStore } from "@/store/logsOverlay";
 import { useSubsStore } from "@/store/subs";
 import { storeToRefs } from "pinia";
@@ -207,14 +204,12 @@ const route = useRoute();
 const methodStore = useMethodStore()
 const globalStore = useGlobalStore();
 const systemStore = useSystemStore();
-const archiveStore = useArchiveStore();
 const logsOverlayStore = useLogsOverlayStore();
 const settingsStore = useSettingsStore();
 const subsStore = useSubsStore();
 const listSearchStore = useListSearchStore();
 const { changeAppearanceSetting } = settingsStore;
 const { appearanceSetting } = storeToRefs(settingsStore);
-const { hasEntries: hasArchiveEntries } = storeToRefs(archiveStore);
 const { isOpen: isLogsOverlayOpen } = storeToRefs(logsOverlayStore);
 const { hasShares } = storeToRefs(subsStore);
 const {
@@ -259,19 +254,12 @@ const currentTitle = computed(() => {
   const metaTitle = route.meta.title;
   return metaTitle ? t(`navBar.pagesTitle.${metaTitle}`) : undefined;
 });
-const currentTitleWhetherAsk = computed(() => {
-  if (isLogsOverlayOpen.value || isListSearchActive.value) return "";
-
-  const ownAsk = ["sync"];
-  const metaTitle = route.meta.title;
-  return ownAsk.includes(metaTitle) ? "ask" : "";
-});
 const showLogsButton = computed(() => route.path !== LOGS_PATH);
 const showRefreshButton = computed(() => {
   return !isNeedBack.value && !appearanceSetting.value.showFloatingRefreshButton;
 });
 const showAddButton = computed(() => {
-  return ["/subs", "/sync", "/files"].includes(route.path)
+  return ["/subs", "/files"].includes(route.path)
     && !appearanceSetting.value.showFloatingAddButton;
 });
 const showSearchButton = computed(() => {
@@ -299,18 +287,6 @@ const navLeftButtonLeft = computed<Record<string, string>>(() => {
 
       return {
         search: appearanceSetting.value.showFloatingAddButton ? "80px" : "114px",
-      };
-    }
-
-    if (route.path === "/archives") {
-      if (!hasArchiveEntries.value) {
-        return {
-          search: "42px",
-        };
-      }
-
-      return {
-        search: "80px",
       };
     }
 
@@ -367,29 +343,12 @@ const handleSearchCloseButton = async () => {
 
   closeListSearch();
 };
-const onClickNavbarIcon = () => {
-  const metaTitle = route.meta.title;
-  const content =
-    t(`navBar.pagesTitle.askWhat.${metaTitle}.content`) || "";
-  const title = t(`navBar.pagesTitle.askWhat.${metaTitle}.title`) || "";
-    Dialog({
-      title: title,
-      content: content,
-      popClass: 'auto-dialog',
-      textAlign: 'left',
-      okText: 'OK',
-      noCancelBtn: true,
-      closeOnPopstate: true,
-      lockScroll: false,
-    });
-};
 
 const add = (route: any) => {
   const routePath = route.path;
   const addMethodMap = {
     "/subs": "addSub",
     "/files": "addFile",
-    "/sync": "addSync",
   };
   methodStore.invokeMethod(addMethodMap[routePath], {});
 };
@@ -485,7 +444,7 @@ const openLogsOverlay = () => {
 const refresh = async () => {
   if (["/preview"].includes(route.path)) {
     window.location.reload();
-  } else if (["/subs", "/sync", "/files"].includes(route.path)) {
+  } else if (["/subs", "/files"].includes(route.path)) {
     initStores(true, true, true);
   } else {
     await resetPwaCacheAndReload({ notify: showNotify, t: i18n_global });

@@ -2,58 +2,38 @@
   <div class="side-bar-wrapper" :class="{ 'is-expanded': isExpanded }">
     <div class="sidebar-content">
       <div class="menu-items">
-        <div 
-          class="menu-item" 
-          :class="{ active: activeTab === 0 }" 
+        <div
+          class="menu-item"
+          :class="{ active: activeTab === 0 }"
           @click="router.push('/subs')"
         >
           <nut-icon name="link" size="22px" />
           <span class="label" v-show="isExpanded">{{ $t('tabBar.sub') }}</span>
         </div>
 
-        <div 
+        <div
           v-show="!shouldHideFilesTab"
-          class="menu-item" 
-          :class="{ active: activeTab === 1 }" 
+          class="menu-item"
+          :class="{ active: activeTab === 1 }"
           @click="router.push('/files')"
         >
           <nut-icon name="category" size="22px" />
           <span class="label" v-show="isExpanded">{{ $t('tabBar.file') }}</span>
         </div>
 
-        <div 
-          v-show="!shouldHideSyncTab"
-          class="menu-item" 
-          :class="{ active: activeTab === 2 }" 
-          @click="router.push('/sync')"
-        >
-          <nut-icon name="refresh2" size="22px" />
-          <span class="label" v-show="isExpanded">{{ $t('tabBar.sync') }}</span>
-        </div>
-
-        <div 
+        <div
           v-show="shouldShowShareTab"
-          class="menu-item" 
-          :class="{ active: activeTab === 3 }" 
+          class="menu-item"
+          :class="{ active: activeTab === 2 }"
           @click="router.push('/shares')"
         >
           <font-awesome-icon icon="fa-solid fa-share-nodes" style="font-size: 20px; width: 22px; height: 22px;" />
           <span class="label" v-show="isExpanded">{{ $t('tabBar.share') }}</span>
         </div>
 
-        <div 
-          v-show="env?.feature?.archive"
-          class="menu-item" 
-          :class="{ active: activeTab === 4 }" 
-          @click="router.push('/archives')"
-        >
-          <font-awesome-icon icon="fa-solid fa-box-archive" style="font-size: 20px; width: 22px; height: 22px;" />
-          <span class="label" v-show="isExpanded">{{ $t('tabBar.archive') }}</span>
-        </div>
-
-        <div 
-          class="menu-item" 
-          :class="{ active: activeTab === 5 }" 
+        <div
+          class="menu-item"
+          :class="{ active: activeTab === 3 }"
           @click="router.push('/my')"
         >
           <div class="icon-container">
@@ -79,7 +59,7 @@ import { useWindowSize } from '@vueuse/core';
 
 const route = useRoute();
 const router = useRouter();
-const routeList = ['/subs', '/files', '/sync', '/shares', '/archives', '/my'];
+const routeList = ['/subs', '/files', '/shares', '/my'];
 const activeTab = ref(routeList.indexOf(route.path));
 
 watch(
@@ -89,10 +69,8 @@ watch(
     if (matchedIndex === -1) {
       if (newPath.includes('/files')) matchedIndex = 1;
       else if (newPath.includes('/subs')) matchedIndex = 0;
-      else if (newPath.includes('/sync')) matchedIndex = 2;
-      else if (newPath.includes('/shares')) matchedIndex = 3;
-      else if (newPath.includes('/archives')) matchedIndex = 4;
-      else if (newPath.includes('/my')) matchedIndex = 5;
+      else if (newPath.includes('/shares')) matchedIndex = 2;
+      else if (newPath.includes('/my')) matchedIndex = 3;
     }
     if (matchedIndex !== -1) {
       activeTab.value = matchedIndex;
@@ -125,17 +103,6 @@ const shouldHideFilesTab = computed(() => {
 
   return !!appearanceSetting.value.istabBar2;
 });
-const shouldHideSyncTab = computed(() => {
-  if (hasCachedAppearanceNavigationSetting.value) {
-    return !!appearanceSetting.value.istabBar;
-  }
-
-  if (!hasFetchedSettings.value) {
-    return false;
-  }
-
-  return !!appearanceSetting.value.istabBar;
-});
 const shouldHideShareTab = computed(() => {
   if (hasCachedAppearanceNavigationSetting.value) {
     return !!appearanceSetting.value.istabBar3;
@@ -167,7 +134,7 @@ const shouldShowShareTab = computed(() => {
     padding: 8px 0;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 101;
-    
+
     // User requested border & card background
     background: var(--tab-bar-color);
     border: 1px solid var(--divider-color);

@@ -1,7 +1,6 @@
 import { useEnvApi } from "@/api/env";
 import i18n from "@/locales";
 import { useAppNotifyStore } from "@/store/appNotify";
-import { useArtifactsStore } from "@/store/artifacts";
 import { useGlobalStore } from "@/store/global";
 import { useSettingsStore } from "@/store/settings";
 import { useSubsStore } from "@/store/subs";
@@ -16,7 +15,6 @@ export const initStores = async (
   const { showNotify } = useAppNotifyStore();
   const globalStore = useGlobalStore();
   const subsStore = useSubsStore();
-  const artifactsStore = useArtifactsStore();
   const settingsStore = useSettingsStore();
 
   if (!await ensureAuthentication()) {
@@ -76,7 +74,6 @@ export const initStores = async (
     // 只有在成功获取环境信息后才继续获取其他数据
     await subsStore.fetchSubsData();
     await new Promise((resolve) => setTimeout(resolve, 50));
-    await artifactsStore.fetchArtifactsData();
     await settingsStore.fetchSettings();
     await settingsStore.syncLocalAppearanceSetting();
 

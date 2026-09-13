@@ -166,11 +166,6 @@
           <nut-switch class="my-switch" v-model="awtabBar3" size="mini" @change="settabBar3" />
         </template>
       </nut-cell>
-      <nut-cell :title="$t(`moreSettingPage.tabBar`)" class="cell-item">
-        <template v-slot:link>
-          <nut-switch class="my-switch" v-model="awtabBar" size="mini" @change="settabBar" />
-        </template>
-      </nut-cell>
     </nut-cell-group>
     <nut-cell-group>
       <nut-cell :title="$t(`themeSettingPage.auto`)" class="cell-item">
@@ -234,7 +229,6 @@
     // isEditorCommon,
     // isSimpleReicon,
     // showFloatingRefreshButton,
-    // istabBar,
     // istabBar2,
     // subProgressStyle,
   } = storeToRefs(globalStore);
@@ -257,7 +251,6 @@
   const createItemPositionValue = ref<CreateItemPosition[]>(['bottom']);
   const awDisplayPreviewInWebPage = ref(true);
   const invalidShareFakeNode = ref(false);
-  const awtabBar = ref(true);
   const awtabBar2 = ref(true);
   const awtabBar3 = ref(false);
   const hidePublicLinkActionButton = ref(false);
@@ -478,14 +471,6 @@
     }
     changeAppearanceSetting({ appearanceSetting: data });
   };
-  const settabBar = (istabBar: boolean) => {
-    // globalStore.settabBar(istabBar);
-    const data = {
-      ...appearanceSetting.value,
-      istabBar: istabBar
-    }
-    changeAppearanceSetting({ appearanceSetting: data });
-  };
   const settabBar2 = (istabBar2: boolean) => {
     // globalStore.settabBar2(istabBar2);
     const data = {
@@ -693,7 +678,6 @@
     createItemPositionValue.value = [appearanceSetting.value.createItemPosition || 'bottom'];
     awDisplayPreviewInWebPage.value = appearanceSetting.value.displayPreviewInWebPage;
     invalidShareFakeNode.value = appearanceSetting.value.invalidShareFakeNode;
-    awtabBar.value = appearanceSetting.value.istabBar;
     awtabBar2.value = appearanceSetting.value.istabBar2;
     awtabBar3.value = appearanceSetting.value.istabBar3 ?? false;
     hidePublicLinkActionButton.value = appearanceSetting.value.hidePublicLinkActionButton ?? false;
@@ -710,7 +694,6 @@
     // awEditorCommon.value = isEditorCommon.value;
     // awSimpleReicon.value = isSimpleReicon.value;
     // awShowFloatingRefreshButton.value = showFloatingRefreshButton.value;
-    // awtabBar.value = istabBar.value;
     // awtabBar2.value = istabBar2.value;
     // subProgressStyleValue.value = [subProgressStyle.value];
     autoSwitch.value = isAuto();

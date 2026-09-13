@@ -557,21 +557,17 @@ export const useSubsStore = defineStore('subsStore', {
     async deleteSub(
       type: SubsType,
       name: string,
-      mode?: DeleteMode,
       isShowNotify: boolean = true,
     ) {
       try {
         const { showNotify } = useAppNotifyStore();
 
-        const { data } = await subsApi.deleteSub(type, name, mode);
+        const { data } = await subsApi.deleteSub(type, name);
         if (data.status === 'success') {
           await this.fetchSubsData();
           isShowNotify && showNotify({
-            type: mode === 'archive' ? 'success' : 'danger',
-            title:
-              mode === 'archive'
-                ? t('archivePage.liveDelete.succeedNotify')
-                : t('subPage.deleteSub.succeedNotify'),
+            type: 'danger',
+            title: t('subPage.deleteSub.succeedNotify'),
           });
           return true;
         }
@@ -592,21 +588,17 @@ export const useSubsStore = defineStore('subsStore', {
     },
     async deleteFile(
       name: string,
-      mode?: DeleteMode,
       isShowNotify: boolean = true,
     ) {
       try {
         const { showNotify } = useAppNotifyStore();
 
-        const { data } = await filesApi.deleteFile(name, mode);
+        const { data } = await filesApi.deleteFile(name);
         if (data.status === 'success') {
           await this.fetchFiles();
           isShowNotify && showNotify({
-            type: mode === 'archive' ? 'success' : 'danger',
-            title:
-              mode === 'archive'
-                ? t('archivePage.liveDelete.succeedNotify')
-                : t('filePage.deleteFile.succeedNotify'),
+            type: 'danger',
+            title: t('filePage.deleteFile.succeedNotify'),
           });
           return true;
         }
@@ -629,21 +621,17 @@ export const useSubsStore = defineStore('subsStore', {
       token: string,
       type: string,
       name: string,
-      mode?: DeleteMode,
       isShowNotify: boolean = true,
     ) {
       try {
         const { showNotify } = useAppNotifyStore();
 
-        const { data } = await shareApi.deleteShare(token, type, name, mode);
+        const { data } = await shareApi.deleteShare(token, type, name);
         if (data.status === "success") {
           await this.fetchShareData();
           isShowNotify && showNotify({
-            type: mode === 'archive' ? 'success' : "danger",
-            title:
-              mode === 'archive'
-                ? t('archivePage.liveDelete.succeedNotify')
-                : t("sharePage.deleteShare.succeedNotify"),
+            type: "danger",
+            title: t("sharePage.deleteShare.succeedNotify"),
           });
           return true;
         }

@@ -8,7 +8,6 @@ import express from '@/vendor/express';
 import $ from '@/core/app';
 import registerDownloadRoutes from '@/restful/download';
 import registerPreviewRoutes from '@/restful/preview';
-import registerSyncRoutes from '@/restful/sync';
 import registerNodeInfoRoutes from '@/restful/node-info';
 
 console.log(
@@ -28,7 +27,6 @@ function serve() {
     // register routes
     registerDownloadRoutes($app);
     registerPreviewRoutes($app);
-    registerSyncRoutes($app);
     registerNodeInfoRoutes($app);
 
     $app.options('/', (req, res) => {

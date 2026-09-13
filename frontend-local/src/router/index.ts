@@ -13,7 +13,6 @@ import { authState, ensureAuthentication } from '@/utils/managementAuth';
 
 import File from '@/views/File.vue';
 import Sub from '@/views/Sub.vue';
-import Sync from '@/views/Sync.vue';
 
 // import editScript from '@/views/editCode/editScript.vue';
 // import themeSetting from '@/views/themeSetting.vue';
@@ -142,17 +141,6 @@ const router = createRouter({
           },
         },
         {
-          path: '/sync',
-          component: Sync,
-          meta: {
-            title: 'sync',
-            needTabBar: true,
-            needNavBack: false,
-            supportsListViewMode: true,
-            supportsListSearch: true,
-          },
-        },
-        {
           path: '/my',
           component: My,
           meta: {
@@ -191,18 +179,6 @@ const router = createRouter({
             title: 'shareEditor',
             needTabBar: false,
             needNavBack: true,
-          },
-        },
-        {
-          path: '/archives',
-          component: () => import('@/views/archive/Archive.vue'),
-          meta: {
-            title: 'archive',
-            needTabBar: false,
-            needNavBack: true,
-            supportsListViewMode: true,
-            supportsListSearch: true,
-            hideSideBarInWideScreenNarrowMode: true,
           },
         },
         {
@@ -247,15 +223,6 @@ const router = createRouter({
           component: () => import('@/views/SubEditor.vue'),
           meta: {
             title: 'subEditor',
-            needTabBar: false,
-            needNavBack: true,
-          },
-        },
-        {
-          path: '/edit/sync/:id',
-          component: () => import('@/views/SyncEditor.vue'),
-          meta: {
-            title: 'syncEditor',
             needTabBar: false,
             needNavBack: true,
           },

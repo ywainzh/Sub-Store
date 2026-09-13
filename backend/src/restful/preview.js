@@ -20,7 +20,7 @@ import {
 import {
     prepareMihomoProfileContent,
     resolveFileRawContent,
-} from '@/restful/sync';
+} from '@/utils/produce-artifact';
 import { normalizeClashYaml } from '@/core/proxy-utils/preprocessors';
 import { maskAgeSecretInUrl } from '@/utils/age';
 import { isMihomoConfigFile, normalizeFileConfig } from '@/utils/file-type';

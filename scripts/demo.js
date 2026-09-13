@@ -39,7 +39,7 @@ function operator(proxies = [], targetPlatform, context) {
   // 21. 2.21.59 开始, `sing-box` 支持使用 `ech-opts` 结构设置 `tls` 的 `ech`. 参考 https://github.com/sub-store-org/Sub-Store/pull/563/changes 基本沿用 mihomo 风格, mihomo 部分字段自动转换. URI `ech` 与 mihomo `ech-opts` 会互转: base64 ECHConfigList 使用 `ech-opts.config`; Xray 的 DNS server 写法(如 `https://1.1.1.1/dns-query` 或 `example.com+https://1.1.1.1/dns-query`)会把 DNS server 放到 `ech-opts._dns`, 显式查询域名放到 `ech-opts.query-server-name`. mihomo 不支持在 ech-opts 中配置 ECH DNS. 如需跟节点 ECH 配置一致, 请在 mihomo 配置文件里设置, 可参考: `dns["nameserver-policy"]["cloudflare-ech.com"] = ["https://dns.alidns.com/dns-query"]` . 反向输出 URI 时, 可设置 `ech-opts._dns` 来拼回 `ech`; 如果只设置 `query-server-name` 且未设置 `_dns`, 默认使用 `https://dns.alidns.com/dns-query` 并输出 warn 日志, 自定义 root DNS 请设置 `ech-opts._dns`. XHTTP `download-settings` 里嵌套的 TLS ECH 同样支持, 其中 `echForceQuery`/`echSockopt` 分别对应 `ech-opts._force-query`/`ech-opts._sockopt`, 嵌套 DNS 可设置 `xhttp-opts.download-settings.ech-opts._dns`
   // 22. `sing-box` 支持使用完整的 `_curve_preferences` 结构设置 `tls` 的 `curve_preferences`
   // 23. `interface-name` 指定流量出站接口 只给 Surge 用的话, `interface` 也可以
-  // 24. Surge for macOS 可手动指定链接参数 target=SurgeMac 或在 同步配置 中指定 SurgeMac 来启用 mihomo 支援 Surge 本身不支持的协议, 详见 https://telegram.me/zhetengsha/1735 . 设置节点字段 `_mihomoExternal` 为 `true` 可强制指定使用 mihomo External Proxy Program 输出该节点. 节点字段 _exec 为 mihomo 路径, 默认 /usr/local/bin/mihomo; 节点字段 _localPort 端口为初始端口号, 逐个递减, 默认为 65535. _merge 为开启仅一个 mihomo 进程+多个 listeners 的模式, 此时仅有一个 mihomo External Proxy Program, 节点会转成 SOCKS5, _mergeName 可设置这个 mihomo 节点的名字(默认为 mihomo merged); _config 对象可覆盖默认配置, _defaultNameserver(默认为 [ '180.76.76.76', '52.80.52.52', '119.28.28.28', '223.6.6.6' ]) 和 _nameserver (默认为 [ 'https://doh.pub/dns-query', 'https://dns.alidns.com/dns-query', 'https://doh-pure.onedns.net/dns-query' ]) 为数组 用于自定义 mihomo 的 default-nameserver 和 nameserver
+  // 24. Surge for macOS 可手动指定链接参数 target=SurgeMac 或在分享配置中指定 SurgeMac 来启用 mihomo 支援 Surge 本身不支持的协议, 详见 https://telegram.me/zhetengsha/1735 . 设置节点字段 `_mihomoExternal` 为 `true` 可强制指定使用 mihomo External Proxy Program 输出该节点. 节点字段 _exec 为 mihomo 路径, 默认 /usr/local/bin/mihomo; 节点字段 _localPort 端口为初始端口号, 逐个递减, 默认为 65535. _merge 为开启仅一个 mihomo 进程+多个 listeners 的模式, 此时仅有一个 mihomo External Proxy Program, 节点会转成 SOCKS5, _mergeName 可设置这个 mihomo 节点的名字(默认为 mihomo merged); _config 对象可覆盖默认配置, _defaultNameserver(默认为 [ '180.76.76.76', '52.80.52.52', '119.28.28.28', '223.6.6.6' ]) 和 _nameserver (默认为 [ 'https://doh.pub/dns-query', 'https://dns.alidns.com/dns-query', 'https://doh-pure.onedns.net/dns-query' ]) 为数组 用于自定义 mihomo 的 default-nameserver 和 nameserver
   // 25. VLESS xhttp URI 的 extra 默认会拆成两部分处理: mihomo 已支持的字段会解析到节点的结构化字段并在输出 URI 时重新组装; extra 里 mihomo 还不支持的字段只会保存在 `_extra_unsupported` 对象里. 输出 URI 时会用“当前结构化字段 + _extra_unsupported”一起构造 extra, 这样既不会让旧 raw extra 覆盖后来修改过的 mihomo 字段, 也能避免 VLESS URI -> VLESS URI 的流程里把暂不支持的 extra 字段丢掉. 但如果节点上显式设置了 `_extra`, 且它是字符串或普通对象, 那么输出 URI 时 extra 会直接使用 `_extra` (对象会自动转成 JSON 字符串), 不再重组结构化字段. 这是为了方便手动自定义 extra, 不用再一个个同步那些本来会影响 extra 的其它字段
   // 修改/设置 extra 举例:
   // 如果是你写的全是 mihomo 已经支持的格式 就直接按 mihomo 的设置
@@ -210,7 +210,6 @@ function operator(proxies = [], targetPlatform, context) {
   //     getFlag, // 获取 emoji 旗帜
   //     removeFlag, // 移除 emoji 旗帜
   //     getISO, // 获取 ISO 3166-1 alpha-2 代码
-  //     Gist, // Gist 类
   //     download, // 内部的下载方法, 见 backend/src/utils/download.js
   //     downloadFile, // 下载二进制文件, 见 backend/src/utils/download.js
   //     age: {
@@ -313,9 +312,6 @@ function operator(proxies = [], targetPlatform, context) {
   //     produceType: 'internal' // 'internal' produces an Array, otherwise produces a String( ProxyUtils.yaml.safeLoad('YAML String').proxies )
   // })
 
-  // 4. 一个比较折腾的方案: 在脚本操作中, 把内容同步到另一个 gist
-  // 见 https://telegram.me/zhetengsha/1428
-  //
   // const content = ProxyUtils.produce([...proxies], platform)
 
   // // YAML

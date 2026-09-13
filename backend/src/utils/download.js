@@ -13,7 +13,7 @@ import {
 } from '@/utils/flow';
 import $ from '@/core/app';
 import { findByName } from '@/utils/database';
-import { produceArtifact } from '@/restful/sync';
+import { produceArtifact } from '@/utils/produce-artifact';
 import PROXY_PREPROCESSORS from '@/core/proxy-utils/preprocessors';
 import { ProxyUtils } from '@/core/proxy-utils';
 import { runBackendRequestTask } from '@/utils/request-concurrency';

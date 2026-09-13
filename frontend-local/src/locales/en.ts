@@ -1,4 +1,18 @@
 export default {
+  resourceOptions: {
+    "includeUnsupportedProxy": {
+      "label": "Includes unsupported protocols",
+      "tips": {
+        "title": "Includes unsupported protocols",
+        "content": "https://github.com/sub-store-org/Sub-Store/wiki/%E9%93%BE%E6%8E%A5%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E"
+      }
+    },
+    "source": {
+      "placeholder": "Please select a source",
+      "isRequired": "Source is required",
+      "title": "Select Source"
+    }
+  },
   availability: {
     "flowSource": "From {name}",
     "enabled": "Enabled",
@@ -26,7 +40,6 @@ export default {
     singleSub: "Single",
     collectionSub: "Collection",
     file: "File",
-    syncConfig: "Sync Configuration",
     share: "Share",
     unknownType: "Unknown Type",
     unknownSource: "Unknown Source",
@@ -127,46 +140,26 @@ export default {
     pagesTitle: {
       sub: "Subscription",
       file: "File",
-      sync: "Sync",
       my: "My Profile",
       editScript: "Script Edit",
       subEditor: "Subscription Editor",
       fileEditor: "File Editor",
-      syncEditor: "Sync Editor",
       preview: 'Preview',
       shareManage: "Share",
       shareEditor: "Share Editor",
-      archive: "Archived",
       logs: "Backend Logs",
       themeSetting: "Theme Setting",
       moreSetting: "More Setting",
       apiSetting: "Backend Management",
       aboutUs: "About Sub-Store",
       notFound: "404 Not Found",
-      askWhat: {
-        sync: {
-          title: "What is Sync?",
-          content:
-            "Upload your subscriptions/files to a private Gist, which can be accessed at any time on devices that do not run the Sub-Store (e.g. routers, etc.).",
-        },
-        subEditor: {
-          title: "Download no subscription?",
-          content: "Try replacing UA· Download. The default isQuanX UA",
-        },
-        moreSetting: {
-          title: "Try",
-          content: "Try",
-        },
-      },
     },
   },
   tabBar: {
     sub: "Subs...",
-    sync: "Sync",
     my: "Profile",
     file: "File",
     share: "Share",
-    archive: "Archived",
   },
   // 404 页
   notFoundPage: {
@@ -298,8 +291,8 @@ export default {
       },
     },
     copyNotify: {
-      succeed: "Link copied successfully\nUse sync to avoid exposing the path",
-      succeedWithShare: "Link copied successfully\nUse share/sync to avoid exposing the path",
+      succeed: "Link copied",
+      succeedWithShare: "Link copied",
       failed: "Failed to copy subscription link!\n{e}",
     },
     copyConfigNotify: {
@@ -355,7 +348,6 @@ export default {
         content: "Content",
         common: "Common",
         actions: "Actions",
-        sync: "Sync",
         expiration: "Expiration",
         display: "Display",
       },
@@ -872,17 +864,7 @@ export default {
   },
   myPage: {
     placeholder: {
-      name: "Gist Sync not set",
-      des: "Configure GitHub Token to enable sync",
-      uploadTime: "Last upload time",
-      haveNotDownload: "Not download yet",
-      githubUser: "Please input GitHub username",
-      gistToken: "Please input GitHub Token",
-      gistAgeSecretKey: "Enter Gist backup age decryption secret key",
       githubProxy: "Please input GitHub Proxy",
-      githubApiUrl: "GitHub API URL (default: https://api.github.com)",
-      githubApiTimeout: "GitHub API Request Timeout (in ms, default: 10000)",
-      artifactSyncBatchSize: "Sync upload batch size (default: 10)",
       githubProxyRegex: "Please input GitHub proxy match regex",
       defaultUserAgent: "Please input Default User-Agent",
       defaultFlowUserAgent: "Please input Default Flow User-Agent",
@@ -899,8 +881,6 @@ export default {
       concurrencyWaitTime: 'Concurrency Wait Time, default: 0(ms)',
       apiCheckTimeout: 'API Check Timeout, default: 3000(ms)',
       apiRequestTimeout: 'Front-End Request Timeout, default: 50000(ms)',
-      noGithubUser: "Not set GitHub username",
-      noGistToken: "Not set GitHub Token",
       noGithubProxy: "Not set GitHub Proxy",
       noGithubProxyRegex: "Not set GitHub proxy match regex",
       noDefaultUserAgent: "Not set default user-agent",
@@ -940,28 +920,10 @@ export default {
     requestConfig: "Request Configuration",
     cacheConfig: "Cache Configuration",
     frontEndConfig: "Front-End Configuration",
-    githubConfig: 'GitHub Configuration',
-    downloadTokenStrategy: {
-      label: "Token handling when downloading",
-      ask: "Always ask (default)",
-      overwrite: "Overwrite Token",
-      keep: "Keep current Token",
-      dialog: {
-        title: "Please choose",
-        content: "To keep the GitHub Token currently configured on this device, choose Keep (backend version must be >= 2.19.83).",
-        doNotAskAgain: "Don't ask again (GitHub settings)",
-        overwrite: "Overwrite (Token may need to be configured again)",
-        keep: "Keep current Token and overwrite other data",
-      },
-    },
     logsTitle: 'Backend Logs',
     storage: {
-      gist: {
-        label: "Gist",
-        info: 'Sync file/subscription(s) to Gist in "Sync Page"',
-      },
       manual: {
-        label: "Manual",
+        label: "Local backup",
         info: "",
         desc: "To prevent accidents, backup your data before restoring.",
         backup: "Backup",
@@ -1072,121 +1034,6 @@ export default {
   codePage: {
     title: "Editor",
     des: "Auto save when exit",
-  },
-  syncPage: {
-    title: "Sync Artifacts",
-    globalCronTip: "Global Cron: {cron}",
-    globalCronUnsetTip: "Global Cron: Not set",
-    syncSwitcher: "Enable Sync",
-    syncAllSucceed: "Sync succeed",
-    emptySub: {
-      title: "You haven't add any synced artifacts",
-      desc: "You can access the artifact anywhere via Gist",
-      btn: "Add an artifact",
-    },
-    detail: {
-      firstLine: "Type: {type}, Source: {name}",
-      secondLine: "Last run: {time}",
-      notSync: "Not run yet",
-    },
-    deleteArt: {
-      title: "Delete Sync Configuration",
-      desc: "Are you sure to delete sync configuration {displayName}? \nDeleted cannot be restored!\n\n⚠️ If the current item has been uploaded before, an attempt will be made to delete gist files with the original filename and the encoded filename.",
-      archiveExtra: "⚠️ If this sync configuration has been uploaded before, the original filename and encoded filename will still be removed from gist when possible.",
-      succeedNotify: "Successfully deleted!",
-      remotePlaceholderNotice: "The remote configuration file was deleted, and a placeholder file was kept to prevent the Gist from becoming empty.",
-      remoteDeleteFailedNotice: "The sync configuration was deleted, but deleting the remote configuration file failed. Check logs for details.",
-      btn: {
-        confirm: "Delete",
-        cancel: "Cancel",
-      },
-    },
-    copyNotify: {
-      succeed: "Copy Gist link successfully",
-      failed: "Failed to copy Gist link\n{e}",
-    },
-    addArtForm: {
-      title: "Add Synced Artifact",
-      cancel: "Cancel",
-      confirm: "Add",
-      name: {
-        label: "Name",
-        placeholder: "Name",
-        isRequired: "Name is required",
-        isExist: "Name is already taken",
-        isValid:
-          "Name should only include letters, numbers, underscores, and dashes",
-      },
-      displayName: {
-        label: "Display Name",
-        placeholder: "Display name",
-      },
-      source: {
-        label: "Source",
-        isRequired: "Source is required",
-        placeholder: "Please select a source",
-      },
-      upload: {
-        label: "Upload Artifact",
-        tips: {
-          title: "Upload Artifact",
-          content:
-            "Requires backend >= 2.23.16.\n\nWhen enabled, scheduled sync uploads the generated artifact to the current sync storage, such as Gist.\n\nWhen disabled, scheduled sync only runs artifact generation and updates the last run time. It does not upload or create a new Gist URL. Use this to refresh caches, or to run custom upload/backup logic in subscriptions/files, such as uploading to another Gist or backing up/restoring via WebDAV.\n\nReferences:\nhttps://telegram.me/zhetengsha/1428\nhttps://telegram.me/zhetengsha/5261",
-        },
-      },
-      cron: {
-        label: "Custom Cron",
-        placeholder: "See the ℹ️ info on the left",
-        tips: {
-          title: "Custom Cron",
-          content:
-            "Requires backend >= 2.23.18.\n\nExample: 55 23 * * *\n\nNode environment: when set, this sync configuration runs independently on this cron and no longer follows the global cron. Leave it empty to keep following the global cron.\n\nNon-Node environments: the built-in custom cron does not run. Use any scheduled request method to trigger sync yourself, for example schedule Shortcuts to request GET https://sub.store/api/sync/artifact/name. To keep it independent, turn off this item's sync switch and rely only on that request.",
-        },
-      },
-      includeUnsupportedProxy: {
-        label: "Includes unsupported protocols",
-        tips: {
-          title:
-            "Includes unsupported protocols",
-          content: "https://github.com/sub-store-org/Sub-Store/wiki/%E9%93%BE%E6%8E%A5%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E",
-        },
-      },
-      prettyYaml: {
-        label: "More readable YAML",
-      },
-      platform: {
-        label: "Target Platform",
-        isRequired: "Target platform is required",
-      },
-      pop: {
-        errorTitle: "Failed to save artifact",
-        errorBtn: "Modify",
-      },
-      succeedNotify: "Added artifact successfully!",
-      submitLoading: "Saving...",
-    },
-    editArtForm: {
-      title: "Edit Synced Artifacts",
-      succeedNotify: "Edited artifact successfully!",
-    },
-    selectSource: {
-      title: "Select Source",
-    },
-    preview: {
-      title: "Sub-Store Gist",
-      content:
-        "⚠️ The status of the latest check: {status}.\nYou can update the configuration to trigger a new check.",
-      url: "The current gist is the last one that was checked successfully.",
-      noUrl:
-        "Once you have successfully checked and uploaded the synchronized configuration, you can view the gist.",
-      cancel: "Cancel",
-      confirm: "View Gist",
-    },
-    download: {
-      content:
-        "⚠️ This feature will only add files to the sync configuration that are not already in the sync configuration.\nYou need to manually set the source.",
-      confirm: "Restore From Gist",
-    },
   },
   sharePage: {
     title: "Share",
@@ -1324,58 +1171,6 @@ export default {
       result: "Deleted {success}, failed {failed}",
     },
   },
-  archivePage: {
-    empty: {
-      title: "No archived items yet",
-      desc: "Archived items will appear here",
-      btn: "Back Home",
-    },
-    liveDelete: {
-      title: "Delete",
-      desc: "Continue with {displayName}?",
-      batchDesc:
-        "Continue with the selected {count} {type} item(s)?",
-      succeedNotify: "Archived",
-      btn: {
-        archive: "Archive",
-        permanent: "Delete",
-      },
-    },
-    entry: {
-      archivedAt: "Archived: {time}",
-      restore: "Restore",
-      delete: "Delete",
-    },
-    selectMode: {
-      enter: "Select",
-      cancel: "Cancel",
-      selectedCount: "{count} selected",
-      selectAll: "Select All",
-      selectTypeAll: "Select all {type}",
-      clearAll: "Clear All",
-      clearTypeAll: "Clear all {type}",
-      restore: "Restore",
-      delete: "Delete permanently",
-    },
-    restore: {
-      succeedNotify: "Restored successfully!",
-      failNotify: "Some selected items failed to restore",
-      result: "Restored {success}, failed {failed}",
-    },
-    delete: {
-      title: "Delete Permanently",
-      desc: "Are you sure you want to permanently delete {displayName}? This cannot be undone.",
-      batchTitle: "Delete Selected Archives",
-      batchDesc: "Are you sure you want to permanently delete the selected {count} archived item(s)? This cannot be undone.",
-      succeedNotify: "Deleted permanently!",
-      failNotify: "Some selected items failed to delete permanently",
-      result: "Deleted {success}, failed {failed}",
-      btn: {
-        confirm: "Delete permanently",
-        cancel: "Cancel",
-      },
-    },
-  },
   // 图标仓库页
   iconCollectionPage: {
     iconCollection: "Icon Collection",
@@ -1474,12 +1269,6 @@ export default {
     },
   },
   moreSettingPage: {
-    gistUpload: {
-      title: 'Gist Upload',
-      base64: 'Base64 Encoded',
-      plaintext: 'Plaintext(w/o GitHub Token)',
-      age: 'age Encrypted',
-    },
     subProgress: {
       title: "Subscription Progress Style",
       hidden: "Hidden",
@@ -1488,7 +1277,6 @@ export default {
     hideOfficialSiteButton: "Hide subscription official site button",
     moreSettingTitle: "More Setting",
     shareManageTitle: 'Share Management',
-    archiveTitle: 'Archived',
     clearData: {
       label: "Clear Backend Data",
       title: "Clear Backend Data",
@@ -1550,7 +1338,6 @@ export default {
     showFloatingAddButton: "Show floating add button",
     displayPreviewInWebPage: 'Display preview in web page',
     invalidShareFakeNode: "Invalid share returns fake info(to prevent caching)",
-    tabBar: 'Hide "Sync" Page',
     tabBar2: 'Hide "File" Page',
     tabBar3: 'Hide "Share" Page',
     auto2: "MoreSetting Key",
@@ -1586,7 +1373,7 @@ export default {
       tips: {
         title: "age Output Encryption",
         content:
-          "Backend >= 2.24.1\nProxy app runtimes may lack required APIs; complete testing has not been done yet.\nThe key configured in a share or sync artifact takes priority.\nBecause encrypted output is inconvenient to inspect after this is set, it is recommended to configure it only in shares or sync artifacts.\nClick the button on the right to generate keys.",
+          "A public key set on a share takes precedence. Enabling encryption produces encrypted output; configure it on the share. Use the button on the right to generate a key.",
       },
     },
     secretKey: {
@@ -1614,7 +1401,7 @@ export default {
       tips:
         "Only native age X25519 and MLKEM768-X25519 keys are supported. The generated age decryption secret key is shown only in this dialog; save it securely. The age encryption public key can be written to the config field to encrypt final output.",
       secretTips:
-        "Only native age X25519 and MLKEM768-X25519 keys are supported. The generated age decryption secret key is shown only in this dialog; save it securely. Gist age encryption derives the public key from this secret key on the backend.",
+        "Supports age X25519 and MLKEM768-X25519 keys. Generated secret keys are shown only in this dialog; save them before closing it.",
     },
   },
   magicPath: {

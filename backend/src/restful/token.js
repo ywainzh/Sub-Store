@@ -9,7 +9,7 @@ import {
 } from '@/restful/errors';
 import { insertByPosition } from '@/utils/database';
 import { getCreateItemPosition } from '@/utils/create-item-position';
-import { archiveShare } from '@/utils/archive';
+import { validateDeleteMode } from '@/utils/delete-mode';
 import { normalizeAgePublicKeyConfig } from '@/utils/age';
 
 export default function register($app) {
@@ -33,13 +33,11 @@ function deleteToken(req, res) {
             );
         }
         $.info(`正在删除...\ntoken: ${token}, 类型：${type}, 名称：${name}`);
-        if (shouldArchiveDeletion(req.query.mode)) {
-            archiveShare(token, type, name);
-        }
+        validateDeleteMode(req.query?.mode);
         deleteTokenItem(token, type, name);
         success(res);
     } catch (error) {
-        failed(res, error);
+        failed(res, error, error.code === 'INVALID_DELETE_MODE' ? 400 : 500);
     }
 }
 
@@ -481,19 +479,6 @@ function findShareToken(query) {
         allTokens.find(
             (item) => matchesShareToken(item, query) && isShareTokenUsable(item),
         ) || null
-    );
-}
-
-function shouldArchiveDeletion(mode) {
-    if (mode == null || mode === '' || mode === 'permanent') {
-        return false;
-    }
-    if (mode === 'archive') {
-        return true;
-    }
-    throw new RequestInvalidError(
-        'INVALID_DELETE_MODE',
-        `Unsupported delete mode: ${mode}`,
     );
 }
 

@@ -81,12 +81,10 @@ export function useSubsApi() {
     deleteSub: (
       type: string,
       name: string,
-      mode?: DeleteMode,
     ): AxiosPromise<MyAxiosRes> => {
       return request({
         url: `/api/${type}/${encodeURIComponent(name)}`,
         method: 'delete',
-        params: mode ? { mode } : undefined,
       });
     },
     compareSub: (

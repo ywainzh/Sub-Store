@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import { after, before, beforeEach, describe, it } from 'mocha';
 
 import {
-    ARTIFACTS_KEY,
     COLLECTIONS_KEY,
     FILES_KEY,
     SUBS_KEY,
@@ -10,12 +9,10 @@ import {
 } from '@/constants';
 
 let $;
-let createArtifactItem;
 let createCollectionItem;
 let createFileItem;
 let createSubscriptionItem;
 let createTokenItem;
-let registerArtifactRoutes;
 let registerCollectionRoutes;
 let registerFileRoutes;
 let registerSubscriptionRoutes;
@@ -91,11 +88,9 @@ describe('age config validation', function () {
         ({ default: registerSubscriptionRoutes } = require('@/restful/subscriptions'));
         ({ default: registerCollectionRoutes } = require('@/restful/collections'));
         ({ default: registerFileRoutes } = require('@/restful/file'));
-        ({ default: registerArtifactRoutes } = require('@/restful/artifacts'));
         ({ createSubscriptionItem } = require('@/restful/subscriptions'));
         ({ createCollectionItem } = require('@/restful/collections'));
         ({ createFileItem } = require('@/restful/file'));
-        ({ createArtifactItem } = require('@/restful/artifacts'));
         ({ createTokenItem } = require('@/restful/token'));
 
         originalRead = $.read.bind($);
@@ -122,7 +117,6 @@ describe('age config validation', function () {
             [SUBS_KEY]: [{ name: 'shared-sub' }],
             [COLLECTIONS_KEY]: [{ name: 'shared-col', subscriptions: [] }],
             [FILES_KEY]: [{ name: 'shared-file' }],
-            [ARTIFACTS_KEY]: [{ name: 'shared-artifact', type: 'file' }],
             [TOKENS_KEY]: [],
         };
 
@@ -155,13 +149,6 @@ describe('age config validation', function () {
                     name: 'new-file',
                     source: 'local',
                     content: 'demo',
-                    'age-public-key': 'invalid-public-key',
-                }),
-            () =>
-                createArtifactItem({
-                    name: 'new-artifact',
-                    type: 'file',
-                    source: 'new-file',
                     'age-public-key': 'invalid-public-key',
                 }),
             () =>
@@ -228,19 +215,6 @@ describe('age config validation', function () {
                     },
                 ],
                 storeKey: FILES_KEY,
-            },
-            {
-                registerRoutes: registerArtifactRoutes,
-                path: '/api/artifacts',
-                body: [
-                    {
-                        name: 'shared-artifact',
-                        type: 'file',
-                        source: 'shared-file',
-                        'age-public-key': 'bad-key',
-                    },
-                ],
-                storeKey: ARTIFACTS_KEY,
             },
         ];
 

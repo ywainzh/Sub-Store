@@ -244,7 +244,7 @@
                     @click="includeUnsupportedProxyTips"
                   >
                     <span>{{
-                      $t(`syncPage.addArtForm.includeUnsupportedProxy.label`)
+                      $t(`resourceOptions.includeUnsupportedProxy.label`)
                     }}</span>
                     <nut-icon name="tips"></nut-icon>
                   </span>
@@ -540,7 +540,6 @@
 </template>
 
 <script lang="ts" setup>
-import { useArtifactsStore } from "@/store/artifacts";
 import logoIcon from "@/assets/icons/logo.png";
 import logoRedIcon from "@/assets/icons/logo-red.png";
 import { useSubsApi } from "@/api/subs";
@@ -1168,7 +1167,6 @@ const submit = () => {
         await subsStore.updateOneData("files", configName);
       } else {
         await subsStore.fetchSubsData();
-        await useArtifactsStore().fetchArtifactsData();
       }
     }
 

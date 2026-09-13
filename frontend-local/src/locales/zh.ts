@@ -1,4 +1,18 @@
 export default {
+  resourceOptions: {
+    "includeUnsupportedProxy": {
+      "label": "包含不支持的协议",
+      "tips": {
+        "title": "包含不支持的协议",
+        "content": "https://github.com/sub-store-org/Sub-Store/wiki/%E9%93%BE%E6%8E%A5%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E"
+      }
+    },
+    "source": {
+      "placeholder": "请选择来源",
+      "isRequired": "来源不能为空",
+      "title": "选择来源"
+    }
+  },
   availability: {
     "enabled": "已启用",
     "manual": "手动停用",
@@ -26,7 +40,6 @@ export default {
     singleSub: '单条订阅',
     collectionSub: '组合订阅',
     file: '文件',
-    syncConfig: '同步配置',
     share: '分享',
     unknownType: '未知类型',
     unknownSource: '未知来源',
@@ -127,46 +140,26 @@ export default {
     pagesTitle: {
       sub: '订阅管理',
       file: '文件管理',
-      sync: '同步',
       my: '我的',
       editScript: '脚本编辑',
       subEditor: '订阅编辑',
       fileEditor: '文件编辑',
-      syncEditor: '同步编辑',
       preview: '预览',
       shareManage: '分享管理',
       shareEditor: '分享编辑',
-      archive: '已归档',
       logs: '后端日志',
       themeSetting: '主题设置',
       moreSetting: '更多设置',
       apiSetting: '后端管理',
       aboutUs: '关于 Sub-Store',
       notFound: '地址未找到',
-      askWhat: {
-        sync: {
-          title: '什么是同步？',
-          content:
-            '将订阅/文件上传到私有 Gist，在无法运行 Sub-Store 的设备（例如路由器等）上也可以随时访问。',
-        },
-        subEditor: {
-          title: '下载不了订阅？',
-          content: '尝试更换 UA 下载试试，默认为 QuanX UA',
-        },
-        moreSetting: {
-          title: '遇到问题？',
-          content: '遇到问题？',
-        },
-      },
     },
   },
   tabBar: {
     sub: '订阅',
-    sync: '同步',
     my: '我的',
     file: '文件',
     share: '分享',
-    archive: '归档',
   },
   // 404 页
   notFoundPage: {
@@ -293,8 +286,8 @@ export default {
       },
     },
     copyNotify: {
-      succeed: '复制链接成功\n使用同步功能可不泄露路径',
-      succeedWithShare: '复制链接成功\n使用分享/同步功能可不泄露路径',
+      succeed: "复制链接成功",
+      succeedWithShare: "复制链接成功",
       failed: '复制订阅链接失败\n{e}',
     },
     copyConfigNotify: {
@@ -349,7 +342,6 @@ export default {
         content: '内容',
         common: '常用',
         actions: '操作',
-        sync: '同步',
         expiration: '有效期',
         display: '显示',
       },
@@ -834,17 +826,7 @@ export default {
   },
   myPage: {
     placeholder: {
-      name: '未设置 GitHub 同步',
-      des: '配置 GitHub Token 启用同步',
-      uploadTime: '上次上传',
-      haveNotDownload: '暂无下载记录',
-      githubUser: '请输入 GitHub 用户名',
-      gistToken: '请输入 GitHub 令牌',
-      gistAgeSecretKey: '请输入 Gist 备份 age 解密私钥',
       githubProxy: '请输入 GitHub 加速代理',
-      githubApiUrl: 'GitHub API 地址(默认: https://api.github.com)',
-      githubApiTimeout: 'GitHub API 请求超时(单位: 毫秒, 默认: 10000)',
-      artifactSyncBatchSize: '同步上传分批大小(默认: 10)',
       githubProxyRegex: '请输入 GitHub 加速代理匹配正则',
       defaultUserAgent: '请输入默认 User-Agent',
       defaultFlowUserAgent: '请输入默认查询订阅流量信息 的 User-Agent',
@@ -861,8 +843,6 @@ export default {
       concurrencyWaitTime: '并发等待时间(单位: 毫秒, 默认: 0)',
       apiCheckTimeout: 'API 检测超时(单位: 毫秒, 默认: 3000)',
       apiRequestTimeout: '前端请求超时(单位: 毫秒, 默认: 50000)',
-      noGithubUser: '未配置 GitHub 用户名',
-      noGistToken: '未配置 GitHub 令牌',
       noGithubProxy: '未配置 GitHub 加速代理',
       noGithubProxyRegex: '未配置 GitHub 加速代理匹配正则',
       noDefaultUserAgent: '未配置默认 User-Agent',
@@ -902,28 +882,10 @@ export default {
     requestConfig: "请求配置",
     cacheConfig: "缓存配置",
     frontEndConfig: "前端配置",
-    githubConfig: 'GitHub 配置',
-    downloadTokenStrategy: {
-      label: '下载时 Token',
-      ask: '每次询问（默认）',
-      overwrite: '覆盖 Token',
-      keep: '保留当前 Token',
-      dialog: {
-        title: 'Token 处理',
-        content: '保留当前 Token 需要后端 >= 2.19.83',
-        doNotAskAgain: '不再询问（可在 GitHub 配置中修改）',
-        overwrite: '覆盖 Token',
-        keep: '保留当前 Token',
-      },
-    },
     logsTitle: '后端日志',
     storage: {
-      gist: {
-        label: 'Gist 同步',
-        info: '在同步配置中同步文件/订阅至 Gist'
-      },
       manual: {
-        label: '手动管理',
+        label: "本地备份",
         info: '',
         desc: '为防止意外 请先备份数据 再进行恢复操作',
         backup: '备份',
@@ -1033,114 +995,6 @@ export default {
   codePage: {
     title: '编辑',
     des: '右上角退出时自动保存',
-  },
-  syncPage: {
-    title: '同步配置',
-    globalCronTip: '全局 Cron：{cron}',
-    globalCronUnsetTip: '全局 Cron：未设置',
-    syncSwitcher: '定时',
-    syncAllSucceed: '同步成功',
-    emptySub: {
-      title: '你还没有添加同步',
-      desc: '添加后即可在其他工具使用 gist 链接',
-      btn: '立即添加',
-    },
-    detail: {
-      firstLine: '类型：{type}，来源：{name}',
-      secondLine: '上次执行：{time}',
-      notSync: '从未执行',
-    },
-    deleteArt: {
-      title: '删除同步配置',
-      desc: '是否确认删除同步配置 {displayName}？删除后不可恢复！\n\n⚠️ 若当前同步配置上传过, 将尝试原文件名和编码后的文件名对应的文件',
-      archiveExtra: '⚠️ 若当前同步配置上传过, 仍会继续尝试删除原文件名和编码后的文件名对应的文件',
-      succeedNotify: '删除同步配置成功！',
-      remotePlaceholderNotice: '远端配置文件已删除，并保留占位文件防止 Gist 被删空',
-      remoteDeleteFailedNotice: '同步配置已删除，但远端配置文件删除失败，详情请查看日志',
-      btn: {
-        confirm: '确认删除',
-        cancel: '取消',
-      },
-    },
-    copyNotify: {
-      succeed: '复制 Gist 链接成功',
-      failed: '复制 Gist 链接失败\n{e}',
-    },
-    addArtForm: {
-      title: '添加同步配置',
-      cancel: '取消',
-      confirm: '确定',
-      name: {
-        label: '名称',
-        placeholder: '请输入名称',
-        isRequired: '名称不能为空',
-        isExist: '名称已存在',
-        isValid: '只能包含字母数字、下划线、中划线、点号',
-      },
-      displayName: {
-        label: '显示名称',
-        placeholder: '请输入显示名称',
-      },
-      source: {
-        label: '来源',
-        isRequired: '来源不能为空',
-        placeholder: '请选择来源',
-      },
-      platform: {
-        label: '目标平台',
-        isRequired: '目标平台不能为空',
-      },
-      upload: {
-        label: '上传产物',
-        tips: {
-          title: '上传产物',
-          content: '后端需 >= 2.23.16\n\n开启后，定时同步会在生成产物后上传到当前同步仓库（如 Gist）。\n\n关闭后，定时同步只执行产物生成并更新上次执行时间，不上传，也不会生成新的 Gist 链接。适合刷新缓存，或在订阅/文件脚本中执行自己的上传、备份逻辑，例如上传到其他 Gist，或通过 WebDAV 备份/恢复数据。\n\n参考:\nhttps://telegram.me/zhetengsha/1428\nhttps://telegram.me/zhetengsha/5261',
-        },
-      },
-      cron: {
-        label: '独立 Cron',
-        placeholder: '请查看左侧 ℹ️ 说明',
-        tips: {
-          title: '独立 Cron',
-          content: '后端需 >= 2.23.18。\n\n示例: 55 23 * * *\n\nNode 环境：填写后，这条同步配置会按此 cron 独立执行，不再跟随全局 cron；留空则继续跟随全局 cron。\n\n非 Node 环境：内置独立 cron 不生效，可自己使用任何定时请求的方式触发定时，例如快捷指令定时请求 GET https://sub.store/api/sync/artifact/name。若想独立定时，可关掉这条的同步开关，仅靠此请求触发。',
-        },
-      },
-      includeUnsupportedProxy: {
-        label: '包含不支持的协议',
-        tips: {
-          title: '包含不支持的协议',
-          content: 'https://github.com/sub-store-org/Sub-Store/wiki/%E9%93%BE%E6%8E%A5%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E'
-        }
-      },
-      prettyYaml: {
-        label: '更易读的 YAML',
-      },
-      pop: {
-        errorTitle: '提交出错',
-        errorBtn: '去修改',
-      },
-      submitLoading: '保存中...',
-      succeedNotify: '添加同步配置成功！',
-    },
-    editArtForm: {
-      title: '编辑同步配置',
-      succeedNotify: '编辑同步配置成功！',
-    },
-    selectSource: {
-      title: '选择来源',
-    },
-    preview: {
-      title: 'Sub-Store Gist',
-      content: '最近一次检查的状态: {status}\n更新配置后将自动触发一次检查',
-      url: '当前的 gist 为最后一次检查正常的 gist',
-      noUrl: '检查成功并上传同步配置后 即可查看',
-      cancel: '取消',
-      confirm: '查看 gist',
-    },
-    download: {
-      content: '⚠️ 只会获取不在同步配置中的 gist 文件\n你需要手动设置来源',
-      confirm: '从 gist 恢复',
-    }
   },
   sharePage: {
     title: "分享编辑",
@@ -1278,58 +1132,6 @@ export default {
       result: "成功删除 {success} 项，失败 {failed} 项",
     },
   },
-  archivePage: {
-    empty: {
-      title: '还没有已归档内容',
-      desc: '归档的项目会显示在这里',
-      btn: '返回首页',
-    },
-    liveDelete: {
-      title: '删除',
-      desc: '是否继续处理 {displayName}？',
-      batchDesc:
-        '是否继续处理选中的 {count} 项{type}？',
-      succeedNotify: '已归档',
-      btn: {
-        archive: '归档',
-        permanent: '彻底删除',
-      },
-    },
-    entry: {
-      archivedAt: '归档: {time}',
-      restore: '恢复',
-      delete: '彻底删除',
-    },
-    selectMode: {
-      enter: '多选',
-      cancel: '取消多选',
-      selectedCount: '已选 {count} 项',
-      selectAll: '全选',
-      selectTypeAll: '全选{type}',
-      clearAll: '取消全选',
-      clearTypeAll: '取消{type}全选',
-      restore: '恢复',
-      delete: '彻底删除',
-    },
-    restore: {
-      succeedNotify: '恢复成功！',
-      failNotify: '批量恢复部分失败',
-      result: '成功恢复 {success} 项，失败 {failed} 项',
-    },
-    delete: {
-      title: '彻底删除',
-      desc: '是否确认彻底删除 {displayName}？删除后不可恢复！',
-      batchTitle: '批量彻底删除',
-      batchDesc: '是否确认彻底删除选中的 {count} 项已归档内容？删除后不可恢复！',
-      succeedNotify: '彻底删除成功！',
-      failNotify: '批量彻底删除部分失败',
-      result: '成功删除 {success} 项，失败 {failed} 项',
-      btn: {
-        confirm: '彻底删除',
-        cancel: '取消',
-      },
-    },
-  },
   // 图标仓库页
   iconCollectionPage: {
     iconCollection: '图标仓库',
@@ -1427,12 +1229,6 @@ export default {
     },
   },
   moreSettingPage: {
-    gistUpload: {
-      title: 'Gist 上传',
-      base64: 'Base64 编码',
-      plaintext: '明文(不带 GitHub Token)',
-      age: 'age 加密',
-    },
     subProgress: {
       title: '订阅进度样式',
       hidden: '不显示',
@@ -1441,7 +1237,6 @@ export default {
     hideOfficialSiteButton: '隐藏订阅官网按钮',
     moreSettingTitle: '更多设置',
     shareManageTitle: '分享管理',
-    archiveTitle: '已归档',
     clearData: {
       label: '清除后端数据',
       title: '清除后端数据',
@@ -1503,7 +1298,6 @@ export default {
     showFloatingAddButton: '显示悬浮添加按钮',
     displayPreviewInWebPage: '在网页中预览',
     invalidShareFakeNode: '无效分享返回假节点(防客户端缓存)',
-    tabBar: '隐藏 "Gist 同步" 页',
     tabBar2: '隐藏 "文件" 页',
     tabBar3: '隐藏 "分享" 页',
     auto2: '自定义设置 Key',
@@ -1539,7 +1333,7 @@ export default {
       placeholder: '请输入 age 加密公钥',
       tips: {
         title: 'age 输出加密',
-        content: '后端 >= 2.24.1\n代理 App 中运行可能会缺环境 暂未进行完整测试\n分享/同步配置中配置的优先\n由于设置后加密输出不方便查看结果, 建议仅在分享/同步配置中配置\n可点击右侧按钮生成',
+        content: "分享配置中的公钥优先。启用后会输出加密内容，建议在分享中设置。可点击右侧按钮生成密钥。",
       },
     },
     secretKey: {
@@ -1564,7 +1358,7 @@ export default {
       filledPair: '已填入私钥和公钥',
       error: 'age key 操作失败',
       tips: '只支持 age 原生 X25519 和 MLKEM768-X25519 key. 生成的 age 解密私钥只在此弹窗显示, 请妥善保存; age 加密公钥可写入配置字段用于加密最终输出.',
-      secretTips: '只支持 age 原生 X25519 和 MLKEM768-X25519 key. 生成的 age 解密私钥只在此弹窗显示, 请妥善保存; Gist age 加密会由后端从私钥推导公钥.',
+      secretTips: "支持 age 原生 X25519 和 MLKEM768-X25519 密钥。生成的解密私钥只在此弹窗显示，请在关闭前妥善保存。",
     },
   },
   magicPath: {

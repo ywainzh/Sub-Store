@@ -29,10 +29,9 @@ import PROXY_PARSERS from './parsers';
 import $ from '@/core/app';
 import { FILES_KEY, MODULES_KEY } from '@/constants';
 import { findByName } from '@/utils/database';
-import { produceArtifact } from '@/restful/sync';
+import { produceArtifact } from '@/utils/produce-artifact';
 import { getFlag, removeFlag, getISO, MMDB } from '@/utils/geo';
 import getFs from '@/runtime/fs';
-import Gist from '@/utils/gist';
 import {
     isShadowsocksOverTls,
     normalizeWireGuardInterface,
@@ -711,7 +710,6 @@ export const ProxyUtils = {
     removeFlag,
     getISO,
     MMDB,
-    Gist,
     download,
     downloadFile,
     isValidUUID,

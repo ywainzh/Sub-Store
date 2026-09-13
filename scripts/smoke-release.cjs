@@ -43,6 +43,7 @@ async function smoke() {
         SUB_STORE_AUTH_SESSIONS_FILE: path.join(temporary, 'sessions.json'), SUB_STORE_PUBLIC_ORIGIN: 'https://smoke.invalid',
         SUB_STORE_CORS_ALLOWED_ORIGINS: 'https://smoke.invalid', SUB_STORE_RELEASE_MANIFEST: path.join(release, 'release-manifest.json'),
         SUB_STORE_ONLINE_MANAGEMENT: 'false',
+        SUB_STORE_BACKEND_SYNC_CRON: 'removed', SUB_STORE_BACKEND_UPLOAD_CRON: 'removed', SUB_STORE_BACKEND_DOWNLOAD_CRON: 'removed',
     };
     async function start() {
         child = spawn(process.execPath, [path.join(release, 'backend/dist/sub-store.bundle.js')], { cwd: dataDirectory, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -85,6 +86,15 @@ async function smoke() {
         assert.equal((await fetch(`${base}/api/utils/refresh`, { headers: { Cookie: cookie } })).status, 403);
         assert.equal((await fetch(`${base}/api/subs?token=${secrets.apiToken}`)).status, 401);
         assert.equal((await fetch(`${base}/api/subs`, { headers: bearer })).status, 200);
+        for (const [method, endpoint] of [
+            ['GET', '/api/artifacts'], ['POST', '/api/artifacts'],
+            ['GET', '/api/sync/artifacts'], ['GET', '/api/sync/artifact/legacy'],
+            ['GET', '/api/archives'], ['POST', '/api/archives/legacy/restore'],
+            ['POST', '/api/sort/artifacts'], ['POST', '/api/sort/archives'],
+            ['GET', '/api/utils/backup?action=upload'],
+        ]) {
+            assert.equal((await fetch(base + endpoint, { method, headers: bearer })).status, 404, `Removed endpoint ${method} ${endpoint}`);
+        }
         const subscription = { name: 'smoke', source: 'local', content: `ss://${Buffer.from('aes-128-gcm:synthetic-pass').toString('base64')}@127.0.0.1:8388#Smoke` };
         const created = await fetch(`${base}/api/subs`, json(subscription, bearer));
         assert.ok(created.ok, 'Synthetic subscription must be accepted');
@@ -165,6 +175,10 @@ async function smoke() {
         assert.equal((await checkRemote()).active, true, 'A confirmed renewal restores an automatically stopped subscription');
         assert.deepEqual(await groupNodes(), ['Smoke', 'Smoke-B', 'Smoke-Remote']);
         const imported = JSON.parse(await (await fetch(`${base}/api/storage`, { headers: bearer })).text());
+        imported.artifacts = [{ name: 'legacy-sync', type: 'subscription', source: 'smoke', sync: true, cron: '* * * * * *' }];
+        imported.archives = [{ id: 'legacy-archive', itemType: 'sub', snapshot: { name: 'legacy-sub' } }];
+        imported.settings.gistToken = 'synthetic-unused-token';
+        imported.settings.githubApiUrl = providerUrl;
         imported.subs.reverse();
         imported.subs[0].active = false;
         imported.subs[0].reason = 'manual';
@@ -173,9 +187,50 @@ async function smoke() {
         assert.ok(afterImport.subscriptions.every(item => item.active), 'Import order does not change availability and runtime fields cannot be injected');
         const savedSubs = (await (await fetch(`${base}/api/subs`, { headers: bearer })).json()).data;
         assert.ok(savedSubs.every(item => !Object.hasOwn(item, 'active') && !Object.hasOwn(item, 'reason')));
+        const requestsBeforeSettings = providerRequests;
+        assert.equal((await fetch(`${base}/api/settings`, { headers: bearer })).status, 200);
+        assert.equal((await fetch(`${base}/api/utils/refresh`, { headers: bearer })).status, 200);
+        assert.equal(providerRequests, requestsBeforeSettings, 'Settings and refresh do not contact a legacy sync provider');
+        assert.ok(!JSON.parse(env).data.feature?.archive, 'Archive capability is no longer advertised');
+
+        assert.equal((await fetch(`${base}/api/subs`, json({ ...subscription, name: 'delete-sub' }, bearer))).status, 201);
+        assert.equal((await fetch(`${base}/api/collections`, json({ name: 'delete-col', subscriptions: ['delete-sub'] }, bearer))).status, 201);
+        assert.equal((await fetch(`${base}/api/files`, json({ name: 'delete-file', sourceType: 'local', content: 'synthetic file' }, bearer))).status, 201);
+        const deleteShare = await fetch(`${base}/api/token`, json({ payload: { type: 'sub', name: 'delete-sub' } }, bearer));
+        assert.ok(deleteShare.ok);
+        const deleteToken = (await deleteShare.json()).data.token;
+        const deletionTargets = [
+            '/api/sub/delete-sub', '/api/collection/delete-col', '/api/file/delete-file',
+            `/api/token/${encodeURIComponent(deleteToken)}?type=sub&name=delete-sub`,
+        ];
+        const snapshot = async () => (await (await fetch(`${base}/api/storage`, { headers: bearer })).json());
+        const beforeDelete = await snapshot();
+        for (const endpoint of deletionTargets) {
+            const separator = endpoint.includes('?') ? '&' : '?';
+            const response = await fetch(`${base}${endpoint}${separator}mode=archive`, { method: 'DELETE', headers: bearer });
+            assert.equal(response.status, 400, 'Old archive requests cannot become permanent deletions');
+            assert.equal((await response.json()).error.code, 'INVALID_DELETE_MODE');
+        }
+        const afterRejectedDelete = await snapshot();
+        for (const key of ['subs', 'collections', 'files', 'tokens', 'artifacts', 'archives']) {
+            assert.deepEqual(afterRejectedDelete[key], beforeDelete[key], `Rejected archive requests preserve ${key}`);
+        }
+        for (const endpoint of deletionTargets.reverse()) {
+            const separator = endpoint.includes('?') ? '&' : '?';
+            const mode = endpoint.includes('/sub/') ? `${separator}mode=permanent` : '';
+            assert.equal((await fetch(base + endpoint + mode, { method: 'DELETE', headers: bearer })).status, 200);
+        }
+        const afterDelete = await snapshot();
+        assert.ok(afterDelete.subs.every(item => item.name !== 'delete-sub'));
+        assert.ok(afterDelete.collections.every(item => item.name !== 'delete-col'));
+        assert.ok(afterDelete.files.every(item => item.name !== 'delete-file'));
+        assert.ok(afterDelete.tokens.every(item => item.token !== deleteToken));
+        assert.deepEqual(afterDelete.artifacts, imported.artifacts, 'Inactive sync records survive backup restore and unrelated deletes');
+        assert.deepEqual(afterDelete.archives, imported.archives, 'Inactive archive records survive backup restore and unrelated deletes');
+        assert.deepEqual(await groupNodes(), ['Smoke', 'Smoke-B', 'Smoke-Remote'], 'Existing shares still generate after backup and delete operations');
         assert.equal((await fetch(`${base}/api/auth/logout`, json({}, sessionHeaders))).status, 200);
         assert.equal((await fetch(`${base}/api/subs`, { headers: sessionHeaders })).status, 401, 'Logout invalidates the session');
-        console.log(`Release ${tag}: startup, auth, CSRF, exports, availability, recovery, original shares, import and restart checks passed`);
+        console.log(`Release ${tag}: startup, auth, CSRF, backups, availability, original shares, import, restart, removed endpoints and delete safety checks passed`);
     } finally {
         await stop();
         await new Promise(resolve => provider.close(resolve));

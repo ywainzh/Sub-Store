@@ -363,7 +363,7 @@ import { getString } from "@/utils/flowTransfer";
 import { createGithubProxyUrlRewriter } from "@/utils/githubProxy";
 import { resolveImageFit } from "@/utils/iconFit";
 import { isMobile } from "@/utils/isMobile";
-import { openManagedDeleteDialog } from "@/utils/archive";
+import { openDeleteDialog } from "@/utils/deleteDialog";
 import { downloadBlobResponse } from "@/utils/download";
 import CompareTable from "@/views/CompareTable.vue";
 
@@ -867,12 +867,9 @@ const handleGlobalClick = (event) => {
   document.removeEventListener('click', handleGlobalClick);
 };
 
-const isArchiveEnabled = computed(() => {
-  return env.value?.feature?.archive;
-});
 
-const onDeleteConfirm = async (mode: DeleteMode = "permanent") => {
-  await subsStore.deleteSub(props.type, name, mode);
+const onDeleteConfirm = async () => {
+  await subsStore.deleteSub(props.type, name);
   // Notify.danger(t('subPage.deleteSub.succeedNotify'), { duration: 1500 });
 };
 
@@ -935,7 +932,7 @@ const openPreviewPanel = () => {
       displayPreviewInWebPageLabel: t("moreSettingPage.displayPreviewInWebPage"),
       tipsTitle: t(`subPage.panel.tips.title`),
       tipsContent: `${t("subPage.panel.tips.content")}\n${t(
-        "syncPage.addArtForm.includeUnsupportedProxy.tips.content",
+        "resourceOptions.includeUnsupportedProxy.tips.content",
       )}`,
       desc: t(`subPage.panel.tips.desc`),
       tipsOkText: t(`subPage.panel.tips.ok`),
@@ -1015,18 +1012,12 @@ const onClickEdit = () => {
 };
 
 const onClickDelete = () => {
-  openManagedDeleteDialog({
-    enabled: isArchiveEnabled.value,
-    managedTitle: t("archivePage.liveDelete.title"),
-    managedContent: t("archivePage.liveDelete.desc", { displayName }),
-    managedCancelText: t("archivePage.liveDelete.btn.archive"),
-    managedOkText: t("archivePage.liveDelete.btn.permanent"),
-    legacyTitle: t("subPage.deleteSub.title"),
-    legacyContent: t("subPage.deleteSub.desc", { displayName }),
-    legacyCancelText: t("subPage.deleteSub.btn.cancel"),
-    legacyOkText: t("subPage.deleteSub.btn.confirm"),
-    onArchive: () => onDeleteConfirm("archive"),
-    onPermanent: () => onDeleteConfirm("permanent"),
+  openDeleteDialog({
+    title: t("subPage.deleteSub.title"),
+    content: t("subPage.deleteSub.desc", { displayName }),
+    cancelText: t("subPage.deleteSub.btn.cancel"),
+    confirmText: t("subPage.deleteSub.btn.confirm"),
+    onConfirm: () => onDeleteConfirm(),
   });
 };
 

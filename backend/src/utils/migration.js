@@ -2,7 +2,6 @@ import {
     SUBS_KEY,
     COLLECTIONS_KEY,
     SCHEMA_VERSION_KEY,
-    ARTIFACTS_KEY,
     RULES_KEY,
     FILES_KEY,
     TOKENS_KEY,
@@ -47,27 +46,22 @@ function doMigrationV2() {
     });
     $.write(newCollections, COLLECTIONS_KEY);
 
-    // 3. migrate artifacts
-    const artifacts = $.read(ARTIFACTS_KEY) || {};
-    const newArtifacts = Object.values(artifacts);
-    $.write(newArtifacts, ARTIFACTS_KEY);
-
-    // 4. migrate rules
+    // 3. migrate rules
     const rules = $.read(RULES_KEY) || {};
     const newRules = Object.values(rules);
     $.write(newRules, RULES_KEY);
 
-    // 5. migrate files
+    // 4. migrate files
     const files = $.read(FILES_KEY) || {};
     const newFiles = Object.values(files);
     $.write(newFiles, FILES_KEY);
 
-    // 6. migrate tokens
+    // 5. migrate tokens
     const tokens = $.read(TOKENS_KEY) || {};
     const newTokens = Object.values(tokens);
     $.write(newTokens, TOKENS_KEY);
 
-    // 7. delete builtin rules
+    // 6. delete builtin rules
     delete $.cache.builtin;
     $.info('Migration complete!');
 

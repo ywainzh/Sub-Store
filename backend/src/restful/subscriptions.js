@@ -14,7 +14,6 @@ import { getCreateItemPosition } from '@/utils/create-item-position';
 import {
     SUBS_KEY,
     COLLECTIONS_KEY,
-    ARTIFACTS_KEY,
     FILES_KEY,
 } from '@/constants';
 import {
@@ -22,7 +21,7 @@ import {
     parseFlowHeaders,
     getRmainingDays,
 } from '@/utils/flow';
-import { archiveSubscription } from '@/utils/archive';
+import { validateDeleteMode } from '@/utils/delete-mode';
 import { success, failed } from './response';
 import $ from '@/core/app';
 import { formatDateTime } from '@/utils';
@@ -352,16 +351,6 @@ function updateSubscription(req, res) {
                 }
             }
 
-            // update all artifacts referring this subscription
-            const allArtifacts = $.read(ARTIFACTS_KEY) || [];
-            for (const artifact of allArtifacts) {
-                if (
-                    artifact.type === 'subscription' &&
-                    artifact.source == name
-                ) {
-                    artifact.source = sub.name;
-                }
-            }
             // update all files referring this subscription
             const allFiles = $.read(FILES_KEY) || [];
             for (const file of allFiles) {
@@ -374,7 +363,6 @@ function updateSubscription(req, res) {
             }
 
             $.write(allCols, COLLECTIONS_KEY);
-            $.write(allArtifacts, ARTIFACTS_KEY);
             $.write(allFiles, FILES_KEY);
         }
         updateByName(allSubs, name, newSub);
@@ -397,13 +385,11 @@ function deleteSubscription(req, res) {
     try {
         const { name } = req.params;
         $.info(`删除订阅：${name}...`);
-        if (shouldArchiveDeletion(req.query.mode)) {
-            archiveSubscription(name);
-        }
+        validateDeleteMode(req.query?.mode);
         deleteSubscriptionItem(name);
         success(res);
     } catch (error) {
-        failed(res, error);
+        failed(res, error, error.code === 'INVALID_DELETE_MODE' ? 400 : 500);
     }
 }
 
@@ -480,19 +466,6 @@ function deleteSubscriptionItem(name) {
     }
     $.write(allCols, COLLECTIONS_KEY);
     return sub;
-}
-
-function shouldArchiveDeletion(mode) {
-    if (mode == null || mode === '' || mode === 'permanent') {
-        return false;
-    }
-    if (mode === 'archive') {
-        return true;
-    }
-    throw new RequestInvalidError(
-        'INVALID_DELETE_MODE',
-        `Unsupported delete mode: ${mode}`,
-    );
 }
 
 export { createSubscriptionItem, deleteSubscriptionItem };

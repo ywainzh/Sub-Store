@@ -16,12 +16,6 @@
       />
 
       <nut-tabbar-item
-        v-show="!shouldHideSyncTab"
-        class="tabbar-item"
-        to="/sync"
-        icon="refresh2"
-      />
-      <nut-tabbar-item
         v-show="shouldShowShareTab"
         class="tabbar-item"
         to="/shares"
@@ -48,7 +42,7 @@
   import { onBeforeRouteUpdate, useRoute } from 'vue-router';
 
   const route = useRoute();
-  const routeList = ['/subs', '/files', '/sync', '/shares', '/my'];
+  const routeList = ['/subs', '/files', '/shares', '/my'];
   const activeTab = ref(routeList.indexOf(route.path));
   const { isWideScreenNarrowModeActive } = useWideScreenNarrowMode();
 
@@ -68,17 +62,6 @@
 
     return !!appearanceSetting.value.istabBar2;
   });
-  const shouldHideSyncTab = computed(() => {
-    if (hasCachedAppearanceNavigationSetting.value) {
-      return !!appearanceSetting.value.istabBar;
-    }
-
-    if (!hasFetchedSettings.value) {
-      return false;
-    }
-
-    return !!appearanceSetting.value.istabBar;
-  });
   const shouldHideShareTab = computed(() => {
     if (hasCachedAppearanceNavigationSetting.value) {
       return !!appearanceSetting.value.istabBar3;
@@ -96,7 +79,6 @@
 
   const {
     bottomSafeArea,
-    // istabBar,
     // istabBar2,
     env
   } = storeToRefs(globalStore);

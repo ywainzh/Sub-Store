@@ -5,7 +5,6 @@ import os from 'os';
 import path from 'path';
 
 import {
-    ARTIFACTS_KEY,
     COLLECTIONS_KEY,
     FILES_KEY,
     SETTINGS_KEY,
@@ -19,7 +18,6 @@ let $;
 let registerSubscriptionRoutes;
 let registerCollectionRoutes;
 let registerFileRoutes;
-let registerArtifactRoutes;
 let registerTokenRoutes;
 let originalRead;
 let originalWrite;
@@ -97,7 +95,6 @@ describe('create position behavior', function () {
         ));
         ({ default: registerCollectionRoutes } = require('@/restful/collections'));
         ({ default: registerFileRoutes } = require('@/restful/file'));
-        ({ default: registerArtifactRoutes } = require('@/restful/artifacts'));
         ({ default: registerTokenRoutes } = require('@/restful/token'));
 
         originalRead = $.read.bind($);
@@ -130,7 +127,6 @@ describe('create position behavior', function () {
             [SUBS_KEY]: [],
             [COLLECTIONS_KEY]: [],
             [FILES_KEY]: [],
-            [ARTIFACTS_KEY]: [],
             [TOKENS_KEY]: [],
             [SETTINGS_KEY]: {},
         };
@@ -252,35 +248,6 @@ describe('create position behavior', function () {
             expect(state[FILES_KEY].map((item) => item.name)).to.deep.equal([
                 'new-file',
                 'older-file',
-            ]);
-            expect(res.statusCode).to.equal(201);
-        });
-
-        it('creates artifacts at the top when settings request it', function () {
-            state[ARTIFACTS_KEY] = [{ name: 'older-artifact' }];
-            const handler = getHandler(
-                registerArtifactRoutes,
-                'POST',
-                '/api/artifacts',
-            );
-            const res = createResponse('/api/artifacts');
-
-            handler(
-                {
-                    body: {
-                        name: 'new-artifact',
-                        type: 'file',
-                        source: 'demo',
-                        platform: 'JSON',
-                    },
-                    query: {},
-                },
-                res,
-            );
-
-            expect(state[ARTIFACTS_KEY].map((item) => item.name)).to.deep.equal([
-                'new-artifact',
-                'older-artifact',
             ]);
             expect(res.statusCode).to.equal(201);
         });

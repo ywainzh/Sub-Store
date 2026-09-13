@@ -620,7 +620,6 @@
 </template>
 
 <script lang="ts" setup>
-import { useArtifactsStore } from "@/store/artifacts";
 import { useSubsApi } from "@/api/subs";
 import logoIcon from "@/assets/icons/logo.png";
 import logoRedIcon from "@/assets/icons/logo-red.png";
@@ -1400,7 +1399,6 @@ const submit = () => {
         await subsStore.updateOneData(editType, configName);
       } else {
         await subsStore.fetchSubsData();
-        await useArtifactsStore().fetchArtifactsData();
       }
     }
 
