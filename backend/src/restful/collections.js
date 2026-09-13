@@ -13,6 +13,7 @@ import { RequestInvalidError, ResourceNotFoundError } from '@/restful/errors';
 import { formatDateTime } from '@/utils';
 import { normalizeAgePublicKeyConfig } from '@/utils/age';
 import { normalizeEditorLanguageConfig } from '@/utils/editor-language';
+import { normalizeAvailabilityConfig } from '@/utils/subscription-status';
 
 export default function register($app) {
     if (!$.read(COLLECTIONS_KEY)) $.write({}, COLLECTIONS_KEY);
@@ -34,7 +35,11 @@ function createCollection(req, res) {
         const collection = createCollectionItem(req.body);
         success(res, collection, 201);
     } catch (error) {
-        failed(res, error);
+        failed(
+            res,
+            error,
+            error.code === 'INVALID_AVAILABILITY_CONFIG' ? 400 : 500,
+        );
     }
 }
 
@@ -82,6 +87,11 @@ function updateCollection(req, res) {
             ...oldCol,
             ...collection,
         };
+        try {
+            normalizeAvailabilityConfig(newCol, true);
+        } catch (error) {
+            return failed(res, error, 400);
+        }
         normalizeAgePublicKeyConfig(newCol);
         normalizeEditorLanguageConfig(newCol);
         $.info(`正在更新组合订阅：${name}...`);
@@ -149,17 +159,23 @@ function replaceCollection(req, res) {
     try {
         const allCols = req.body;
         allCols.forEach((collection) => {
+            normalizeAvailabilityConfig(collection, true);
             normalizeAgePublicKeyConfig(collection);
             normalizeEditorLanguageConfig(collection);
         });
         $.write(allCols, COLLECTIONS_KEY);
         success(res);
     } catch (error) {
-        failed(res, error);
+        failed(
+            res,
+            error,
+            error.code === 'INVALID_AVAILABILITY_CONFIG' ? 400 : 500,
+        );
     }
 }
 
 function createCollectionItem(collection) {
+    normalizeAvailabilityConfig(collection, true);
     normalizeAgePublicKeyConfig(collection);
     normalizeEditorLanguageConfig(collection);
     $.info(`正在创建组合订阅：${collection.name}`);

@@ -258,6 +258,7 @@ import draggable from "vuedraggable";
 
 import { useSubsApi } from "@/api/subs";
 import SubListItem from "@/components/SubListItem.vue";
+import { useSubscriptionStatuses } from '@/hooks/useSubscriptionStatuses';
 import { useBackend } from "@/hooks/useBackend";
 import { useFilteredDraggableList } from "@/hooks/useFilteredDraggableList";
 import { useListViewMode } from "@/hooks/useListViewMode";
@@ -285,6 +286,7 @@ const addSubBtnIsVisible = ref(false);
 // const isColFold = ref(localStorage.getItem('col-fold') === '1');
 const methodStore = useMethodStore();
 const subsStore = useSubsStore();
+useSubscriptionStatuses();
 const globalStore = useGlobalStore();
 const systemStore = useSystemStore();
 const settingsStore = useSettingsStore();

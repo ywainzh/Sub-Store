@@ -35,6 +35,7 @@ if (isNode) {
 
 let meta = {};
 let feature = {};
+feature.subscriptionAvailability = true;
 let projectVersion;
 
 try {
@@ -63,7 +64,10 @@ try {
         const env = eval('process.env');
         // Only presentation settings belong in this API. Never expose credentials,
         // auth/deployment paths, command arguments or arbitrary environment values.
-        for (const key of ['SUB_STORE_BACKEND_CUSTOM_NAME', 'SUB_STORE_DOCKER']) {
+        for (const key of [
+            'SUB_STORE_BACKEND_CUSTOM_NAME',
+            'SUB_STORE_DOCKER',
+        ]) {
             if (env[key] !== undefined) {
                 meta.node.env[key] = env[key];
             }

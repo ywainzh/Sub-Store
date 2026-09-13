@@ -33,7 +33,10 @@ export async function getFlowHeaders(
     customProxy,
     flowUrl,
     flowHeaders,
+    options = {},
 ) {
+    const info = options.quiet ? () => {} : $.info.bind($);
+    const error = options.quiet ? () => {} : $.error.bind($);
     let url = flowUrl || rawUrl || '';
     let $arguments = {};
     const rawArgs = url.split('#');
@@ -93,7 +96,7 @@ export async function getFlowHeaders(
                 customHeaders = lowerCaseHeaders;
             }
         } catch (e) {
-            $.error(
+            error(
                 `解析自定义 ${
                     flowHeaders || $arguments?.flowHeaders
                         ? 'flowHeaders'
@@ -107,8 +110,8 @@ export async function getFlowHeaders(
     );
     const cached = headersResourceCache.get(id);
     let flowInfo;
-    if (!$arguments?.noCache && cached) {
-        $.info(
+    if (!options.fresh && !$arguments?.noCache && cached) {
+        info(
             `使用缓存的流量信息: ${url}, ${
                 customHeaders ? JSON.stringify(customHeaders) : userAgent
             }`,
@@ -119,7 +122,7 @@ export async function getFlowHeaders(
         if (flowUrl) {
             let flowUrlHeaders;
             try {
-                $.info(
+                info(
                     `使用 GET 方法从响应体获取流量信息: ${flowUrl}, ${
                         customHeaders
                             ? JSON.stringify(customHeaders)
@@ -127,37 +130,43 @@ export async function getFlowHeaders(
                     }, Insecure: ${!!insecure}, Proxy: ${proxy}`,
                 );
                 const { headers, body, statusCode } =
-                    await runBackendRequestTask(() =>
-                        http.get({
-                            url,
-                            headers: customHeaders || {
-                                'User-Agent': userAgent,
-                            },
-                            timeout: requestTimeout,
-                            ...(proxy ? { proxy } : {}),
-                            ...(isLoon && proxy ? { node: proxy } : {}),
-                            ...(isQX && proxy ? { opts: { policy: proxy } } : {}),
-                            ...(proxy ? getPolicyDescriptor(proxy) : {}),
-                            ...(insecure ? insecure : {}),
-                        }),
+                    await runBackendRequestTask(
+                        () =>
+                            http.get({
+                                url,
+                                headers: customHeaders || {
+                                    'User-Agent': userAgent,
+                                },
+                                timeout: requestTimeout,
+                                ...(proxy ? { proxy } : {}),
+                                ...(isLoon && proxy ? { node: proxy } : {}),
+                                ...(isQX && proxy
+                                    ? { opts: { policy: proxy } }
+                                    : {}),
+                                ...(proxy ? getPolicyDescriptor(proxy) : {}),
+                                ...(insecure ? insecure : {}),
+                            }),
                         'flow body GET',
                     );
                 if (statusCode < 200 || statusCode >= 400) {
                     throw new Error(`statusCode: ${statusCode}`);
                 }
                 flowUrlHeaders = headers;
-                const parsed = parseFlowHeaders(body);
+                const parsed = options.allowPartial
+                    ? parseFlowObservation(body)
+                    : parseFlowHeaders(body);
                 if (
-                    Number.isFinite(parsed?.total) &&
-                    Number.isFinite(parsed?.usage?.download) &&
-                    Number.isFinite(parsed?.usage?.upload)
+                    (options.allowPartial && Object.keys(parsed).length > 0) ||
+                    (Number.isFinite(parsed?.total) &&
+                        Number.isFinite(parsed?.usage?.download) &&
+                        Number.isFinite(parsed?.usage?.upload))
                 ) {
                     flowInfo = body;
                 } else {
                     throw new Error('响应体中未包含合法的流量信息');
                 }
             } catch (e) {
-                $.error(
+                error(
                     `使用 GET 方法从响应体获取流量信息失败: ${flowUrl}, ${
                         customHeaders
                             ? JSON.stringify(customHeaders)
@@ -169,13 +178,17 @@ export async function getFlowHeaders(
                 if (flowUrlHeaders) {
                     try {
                         const flowField = getFlowField(flowUrlHeaders);
-                        const parsed = parseFlowHeaders(flowField);
+                        const parsed = options.allowPartial
+                            ? parseFlowObservation(flowField)
+                            : parseFlowHeaders(flowField);
                         if (
-                            Number.isFinite(parsed?.total) &&
-                            Number.isFinite(parsed?.usage?.download) &&
-                            Number.isFinite(parsed?.usage?.upload)
+                            (options.allowPartial &&
+                                Object.keys(parsed).length > 0) ||
+                            (Number.isFinite(parsed?.total) &&
+                                Number.isFinite(parsed?.usage?.download) &&
+                                Number.isFinite(parsed?.usage?.upload))
                         ) {
-                            $.info(
+                            info(
                                 `使用 GET 方法从响应头获取流量信息成功: ${flowUrl}, ${
                                     customHeaders
                                         ? JSON.stringify(customHeaders)
@@ -187,7 +200,7 @@ export async function getFlowHeaders(
                             throw new Error('响应体中未包含合法的流量信息');
                         }
                     } catch (e) {
-                        $.error(
+                        error(
                             `使用 GET 方法从响应头获取流量信息失败: ${flowUrl}, ${
                                 customHeaders
                                     ? JSON.stringify(customHeaders)
@@ -201,43 +214,53 @@ export async function getFlowHeaders(
             }
         } else {
             try {
-                $.info(
+                info(
                     `使用 HEAD 方法从响应头获取流量信息: ${url}, ${
                         customHeaders
                             ? JSON.stringify(customHeaders)
                             : `User-Agent: ${userAgent || ''}`
                     }, Insecure: ${!!insecure}, Proxy: ${proxy}`,
                 );
-                const { headers } = await runBackendRequestTask(() =>
-                    http.head({
-                        url: url
-                            .split(/[\r\n]+/)
-                            .map((i) => i.trim())
-                            .filter((i) => i.length)[0],
-                        headers: {
-                            ...(customHeaders || { 'User-Agent': userAgent }),
-                            ...(isStash && proxy
-                                ? {
-                                      'X-Stash-Selected-Proxy':
-                                          encodeURIComponent(proxy),
-                                  }
+                const { headers, statusCode } = await runBackendRequestTask(
+                    () =>
+                        http.head({
+                            url: url
+                                .split(/[\r\n]+/)
+                                .map((i) => i.trim())
+                                .filter((i) => i.length)[0],
+                            headers: {
+                                ...(customHeaders || {
+                                    'User-Agent': userAgent,
+                                }),
+                                ...(isStash && proxy
+                                    ? {
+                                          'X-Stash-Selected-Proxy':
+                                              encodeURIComponent(proxy),
+                                      }
+                                    : {}),
+                                ...(isShadowRocket && proxy
+                                    ? { 'X-Surge-Policy': proxy }
+                                    : {}),
+                            },
+                            timeout: requestTimeout,
+                            ...(proxy ? { proxy } : {}),
+                            ...(isLoon && proxy ? { node: proxy } : {}),
+                            ...(isQX && proxy
+                                ? { opts: { policy: proxy } }
                                 : {}),
-                            ...(isShadowRocket && proxy
-                                ? { 'X-Surge-Policy': proxy }
-                                : {}),
-                        },
-                        timeout: requestTimeout,
-                        ...(proxy ? { proxy } : {}),
-                        ...(isLoon && proxy ? { node: proxy } : {}),
-                        ...(isQX && proxy ? { opts: { policy: proxy } } : {}),
-                        ...(proxy ? getPolicyDescriptor(proxy) : {}),
-                        ...(insecure ? insecure : {}),
-                    }),
+                            ...(proxy ? getPolicyDescriptor(proxy) : {}),
+                            ...(insecure ? insecure : {}),
+                        }),
                     'flow headers HEAD',
                 );
+                if (
+                    options.strictStatus &&
+                    (statusCode < 200 || statusCode >= 400)
+                )
+                    throw new Error('FLOW_REQUEST_FAILED');
                 flowInfo = getFlowField(headers);
             } catch (e) {
-                $.error(
+                error(
                     `使用 HEAD 方法从响应头获取流量信息失败: ${url}, ${
                         customHeaders
                             ? JSON.stringify(customHeaders)
@@ -248,40 +271,50 @@ export async function getFlowHeaders(
                 );
             }
             if (!flowInfo) {
-                $.info(
+                info(
                     `使用 GET 方法获取流量信息: ${url}, ${
                         customHeaders
                             ? JSON.stringify(customHeaders)
                             : `User-Agent: ${userAgent || ''}`
                     }, Insecure: ${!!insecure}, Proxy: ${proxy}`,
                 );
-                const { headers } = await runBackendRequestTask(() =>
-                    http.get({
-                        url: url
-                            .split(/[\r\n]+/)
-                            .map((i) => i.trim())
-                            .filter((i) => i.length)[0],
-                        headers: {
-                            ...(customHeaders || { 'User-Agent': userAgent }),
-                            ...(isStash && proxy
-                                ? {
-                                      'X-Stash-Selected-Proxy':
-                                          encodeURIComponent(proxy),
-                                  }
+                const { headers, statusCode } = await runBackendRequestTask(
+                    () =>
+                        http.get({
+                            url: url
+                                .split(/[\r\n]+/)
+                                .map((i) => i.trim())
+                                .filter((i) => i.length)[0],
+                            headers: {
+                                ...(customHeaders || {
+                                    'User-Agent': userAgent,
+                                }),
+                                ...(isStash && proxy
+                                    ? {
+                                          'X-Stash-Selected-Proxy':
+                                              encodeURIComponent(proxy),
+                                      }
+                                    : {}),
+                                ...(isShadowRocket && proxy
+                                    ? { 'X-Surge-Policy': proxy }
+                                    : {}),
+                            },
+                            timeout: requestTimeout,
+                            ...(proxy ? { proxy } : {}),
+                            ...(isLoon && proxy ? { node: proxy } : {}),
+                            ...(isQX && proxy
+                                ? { opts: { policy: proxy } }
                                 : {}),
-                            ...(isShadowRocket && proxy
-                                ? { 'X-Surge-Policy': proxy }
-                                : {}),
-                        },
-                        timeout: requestTimeout,
-                        ...(proxy ? { proxy } : {}),
-                        ...(isLoon && proxy ? { node: proxy } : {}),
-                        ...(isQX && proxy ? { opts: { policy: proxy } } : {}),
-                        ...(proxy ? getPolicyDescriptor(proxy) : {}),
-                        ...(insecure ? insecure : {}),
-                    }),
+                            ...(proxy ? getPolicyDescriptor(proxy) : {}),
+                            ...(insecure ? insecure : {}),
+                        }),
                     'flow headers GET',
                 );
+                if (
+                    options.strictStatus &&
+                    (statusCode < 200 || statusCode >= 400)
+                )
+                    throw new Error('FLOW_REQUEST_FAILED');
                 flowInfo = getFlowField(headers);
             }
         }
@@ -300,6 +333,41 @@ export async function getFlowHeaders(
     }
 
     return flowInfo;
+}
+
+// Independent fields support expiry-only providers. Missing or invalid fields
+// cannot clear a confirmed restriction. Configured subUserinfo takes precedence.
+export function parseFlowObservation(value) {
+    const fields = new Map();
+    if (typeof value !== 'string') return {};
+    for (const field of value.split(';')) {
+        const index = field.indexOf('=');
+        if (index < 0) continue;
+        const key = field.slice(0, index).trim().toLowerCase();
+        if (!fields.has(key)) fields.set(key, field.slice(index + 1).trim());
+    }
+    const number = (key) => {
+        const raw = fields.get(key);
+        if (!raw || !/^[+]?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(raw))
+            return undefined;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+    };
+    const observation = {};
+    const expires = number('expire');
+    if (expires != null) observation.expires = expires;
+    const total = number('total');
+    const upload = number('upload');
+    const download = number('download');
+    if (
+        total > 0 &&
+        upload != null &&
+        download != null &&
+        Number.isFinite(upload + download)
+    ) {
+        observation.quota = { total, upload, download };
+    }
+    return observation;
 }
 export function parseFlowHeaders(flowHeaders) {
     if (!flowHeaders) return;

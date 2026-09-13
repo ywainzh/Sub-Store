@@ -33,6 +33,17 @@ import { normalizeClashYaml } from '@/core/proxy-utils/preprocessors';
 import { applyAgeOutputEncryption } from '@/restful/age-output';
 import { maskAgeSecretInUrl } from '@/utils/age';
 import { isMihomoConfigFile, normalizeFileConfig } from '@/utils/file-type';
+import {
+    prepareSubscription,
+    prepareCollection,
+    availableSubscriptionUrls,
+    assertSubscriptionAvailable,
+    assertCollectionAvailable,
+    collectionSubscriptions,
+    SubscriptionUnavailableError,
+    getSubscriptionStatus,
+    isSubscriptionUnavailable,
+} from '@/utils/subscription-status';
 
 export default function register($app) {
     // Initialization
@@ -125,6 +136,7 @@ async function downloadFileSources({
                     { noFlow },
                 );
             } catch (err) {
+                if (isSubscriptionUnavailable(err)) throw err;
                 errors[url] = err;
                 $.error(
                     `文件 ${file.name} 的远程文件 ${maskAgeSecretInUrl(
@@ -243,15 +255,10 @@ async function prepareMihomoProfileContent(file, sourceOptions = {}) {
         if (proxies.length === 0) {
             throw new Error(`文件 ${file.name} 中不含有效节点`);
         }
-        config.proxies = ProxyUtils.produce(
-            proxies,
-            'mihomo',
-            'internal',
-            {
-                'delete-underscore-fields': true,
-                'include-unsupported-proxy': file?.includeUnsupportedProxy,
-            },
-        );
+        config.proxies = ProxyUtils.produce(proxies, 'mihomo', 'internal', {
+            'delete-underscore-fields': true,
+            'include-unsupported-proxy': file?.includeUnsupportedProxy,
+        });
     } else {
         config.proxies = await produceArtifact({
             type: sourceType,
@@ -302,6 +309,7 @@ async function produceArtifact({
         } else {
             throw new Error('未提供订阅名称或订阅数据');
         }
+        await prepareSubscription(sub);
         const subIgnoreFailedRemoteSub = resolveIgnoreFailedRemoteSubMode(
             ignoreFailedRemoteSub,
             sub.ignoreFailedRemoteSub,
@@ -320,33 +328,32 @@ async function produceArtifact({
             } else if (url) {
                 const errors = {};
                 const downloaded = await Promise.all(
-                    url
-                        .split(/[\r\n]+/)
-                        .map((i) => i.trim())
-                        .filter((i) => i.length)
-                        .map(async (url) => {
-                            try {
-                                return await download(
+                    availableSubscriptionUrls(sub, url).map(async (url) => {
+                        try {
+                            return await download(
+                                url,
+                                ua || sub.ua,
+                                undefined,
+                                proxy || sub.proxy,
+                                undefined,
+                                awaitCustomCache,
+                                noCache || sub.noCache,
+                                true,
+                                { returnRaw: true, noFlow: skipFlow },
+                            );
+                        } catch (err) {
+                            if (isSubscriptionUnavailable(err)) throw err;
+                            errors[url] = err;
+                            $.error(
+                                `订阅 ${
+                                    sub.name
+                                } 的远程订阅 ${maskAgeSecretInUrl(
                                     url,
-                                    ua || sub.ua,
-                                    undefined,
-                                    proxy || sub.proxy,
-                                    undefined,
-                                    awaitCustomCache,
-                                    noCache || sub.noCache,
-                                    true,
-                                    { returnRaw: true, noFlow: skipFlow },
-                                );
-                            } catch (err) {
-                                errors[url] = err;
-                                $.error(
-                                    `订阅 ${sub.name} 的远程订阅 ${maskAgeSecretInUrl(
-                                        url,
-                                    )} 发生错误: ${err}`,
-                                );
-                                return '';
-                            }
-                        }),
+                                )} 发生错误: ${err}`,
+                            );
+                            return '';
+                        }
+                    }),
                 );
                 raw = downloaded.map((i) => i.result ?? i);
                 sourceRaw = downloaded.map((i) => i.raw ?? i);
@@ -385,33 +392,32 @@ async function produceArtifact({
             } else {
                 const errors = {};
                 const downloaded = await Promise.all(
-                    sub.url
-                        .split(/[\r\n]+/)
-                        .map((i) => i.trim())
-                        .filter((i) => i.length)
-                        .map(async (url) => {
-                            try {
-                                return await download(
+                    availableSubscriptionUrls(sub).map(async (url) => {
+                        try {
+                            return await download(
+                                url,
+                                ua || sub.ua,
+                                undefined,
+                                proxy || sub.proxy,
+                                undefined,
+                                awaitCustomCache,
+                                noCache || sub.noCache,
+                                true,
+                                { returnRaw: true, noFlow: skipFlow },
+                            );
+                        } catch (err) {
+                            if (isSubscriptionUnavailable(err)) throw err;
+                            errors[url] = err;
+                            $.error(
+                                `订阅 ${
+                                    sub.name
+                                } 的远程订阅 ${maskAgeSecretInUrl(
                                     url,
-                                    ua || sub.ua,
-                                    undefined,
-                                    proxy || sub.proxy,
-                                    undefined,
-                                    awaitCustomCache,
-                                    noCache || sub.noCache,
-                                    true,
-                                    { returnRaw: true, noFlow: skipFlow },
-                                );
-                            } catch (err) {
-                                errors[url] = err;
-                                $.error(
-                                    `订阅 ${sub.name} 的远程订阅 ${maskAgeSecretInUrl(
-                                        url,
-                                    )} 发生错误: ${err}`,
-                                );
-                                return '';
-                            }
-                        }),
+                                )} 发生错误: ${err}`,
+                            );
+                            return '';
+                        }
+                    }),
                 );
                 raw = downloaded.map((i) => i.result ?? i);
                 sourceRaw = downloaded.map((i) => i.raw ?? i);
@@ -442,8 +448,11 @@ async function produceArtifact({
                     sourceRaw.push(sub.content);
                 }
             }
+            assertSubscriptionAvailable(sub);
             if (produceType === 'raw') {
-                return JSON.stringify((Array.isArray(raw) ? raw : [raw]).flat());
+                return JSON.stringify(
+                    (Array.isArray(raw) ? raw : [raw]).flat(),
+                );
             }
             // parse proxies
             let proxies = (Array.isArray(raw) ? raw : [raw])
@@ -484,6 +493,8 @@ async function produceArtifact({
                 }
                 exist[proxy.name] = true;
             }
+            // Re-read manual state after asynchronous processors.
+            assertSubscriptionAvailable(sub);
             // produce
             return ProxyUtils.produce(
                 proxies,
@@ -492,7 +503,10 @@ async function produceArtifact({
                 produceOpts,
             );
         } catch (err) {
-            if (!shouldFallbackIgnoreFailedRemoteSub(subIgnoreFailedRemoteSub)) {
+            if (isSubscriptionUnavailable(err)) throw err;
+            if (
+                !shouldFallbackIgnoreFailedRemoteSub(subIgnoreFailedRemoteSub)
+            ) {
                 throw err;
             }
 
@@ -522,24 +536,29 @@ async function produceArtifact({
         const allCols = $.read(COLLECTIONS_KEY);
         const collection = findByName(allCols, name);
         if (!collection) throw new Error(`找不到组合订阅 ${name}`);
-        const subnames = [...collection.subscriptions];
-        let subscriptionTags = collection.subscriptionTags;
-        if (Array.isArray(subscriptionTags) && subscriptionTags.length > 0) {
-            allSubs.forEach((sub) => {
-                if (
-                    Array.isArray(sub.tag) &&
-                    sub.tag.length > 0 &&
-                    !subnames.includes(sub.name) &&
-                    sub.tag.some((tag) => subscriptionTags.includes(tag))
-                ) {
-                    subnames.push(sub.name);
-                }
-            });
-        }
-        const collectionIgnoreFailedRemoteSub = resolveIgnoreFailedRemoteSubMode(
-            ignoreFailedRemoteSub,
-            collection.ignoreFailedRemoteSub,
+        const subnames = (await prepareCollection(collection)).map(
+            (sub) => sub.name,
         );
+        const availableNames = () => {
+            const current = assertCollectionAvailable(collection);
+            const active = new Set(
+                collectionSubscriptions(current)
+                    .filter((sub) => getSubscriptionStatus(sub).active)
+                    .map((sub) => sub.name),
+            );
+            const names = subnames.filter((name) => active.has(name));
+            if (!names.length)
+                throw new SubscriptionUnavailableError(
+                    'NO_ACTIVE_SUBSCRIPTIONS',
+                    'empty',
+                );
+            return names;
+        };
+        const collectionIgnoreFailedRemoteSub =
+            resolveIgnoreFailedRemoteSubMode(
+                ignoreFailedRemoteSub,
+                collection.ignoreFailedRemoteSub,
+            );
         const skipFlow = noFlow || collection.noFlow;
 
         try {
@@ -551,6 +570,7 @@ async function produceArtifact({
             await Promise.all(
                 subnames.map(async (name) => {
                     const sub = findByName(allSubs, name);
+                    if (!sub || !getSubscriptionStatus(sub).active) return;
                     const subMode = resolveIgnoreFailedRemoteSubMode(
                         sub.ignoreFailedRemoteSub,
                     );
@@ -577,11 +597,8 @@ async function produceArtifact({
                         } else {
                             const errors = {};
                             const downloaded = await Promise.all(
-                                sub.url
-                                    .split(/[\r\n]+/)
-                                    .map((i) => i.trim())
-                                    .filter((i) => i.length)
-                                    .map(async (url) => {
+                                availableSubscriptionUrls(sub).map(
+                                    async (url) => {
                                         try {
                                             return await download(
                                                 url,
@@ -601,6 +618,8 @@ async function produceArtifact({
                                                 },
                                             );
                                         } catch (err) {
+                                            if (isSubscriptionUnavailable(err))
+                                                throw err;
                                             errors[url] = err;
                                             $.error(
                                                 `订阅 ${
@@ -611,7 +630,8 @@ async function produceArtifact({
                                             );
                                             return '';
                                         }
-                                    }),
+                                    },
+                                ),
                             );
                             raw = downloaded.map((i) => i.result ?? i);
                             sourceRaw = downloaded.map((i) => i.raw ?? i);
@@ -681,6 +701,7 @@ async function produceArtifact({
                             }% `,
                         );
                     } catch (err) {
+                        if (isSubscriptionUnavailable(err)) throw err;
                         processed++;
 
                         if (shouldFallbackIgnoreFailedRemoteSub(subMode)) {
@@ -696,7 +717,9 @@ async function produceArtifact({
                                 },
                             });
                             $.error(
-                                `订阅 ${sub.name} 在组合订阅处理中启用兜底后返回空结果: ${
+                                `订阅 ${
+                                    sub.name
+                                } 在组合订阅处理中启用兜底后返回空结果: ${
                                     err.message ?? err
                                 }`,
                             );
@@ -719,9 +742,11 @@ async function produceArtifact({
             );
 
             if (Object.keys(errors).length > 0) {
-                const message = `组合订阅 ${collection.name} 的子订阅 ${Object.keys(
-                    errors,
-                ).join(', ')} 发生错误, 请查看日志`;
+                const message = `组合订阅 ${
+                    collection.name
+                } 的子订阅 ${Object.keys(errors).join(
+                    ', ',
+                )} 发生错误, 请查看日志`;
                 const notify = () => {
                     $.notify(
                         `🌍 Sub-Store 处理组合订阅失败`,
@@ -757,9 +782,13 @@ async function produceArtifact({
             }
 
             // merge proxies with the original order
+            const currentNames = availableNames();
+            for (const name of subnames) {
+                if (!currentNames.includes(name)) delete rawResults[name];
+            }
             let proxies = Array.prototype.concat.apply(
                 [],
-                subnames.map((name) => results[name] || []),
+                currentNames.map((name) => results[name] || []),
             );
 
             proxies.forEach((proxy) => {
@@ -776,6 +805,12 @@ async function produceArtifact({
                 $options,
                 rawResults,
                 { noFlow: skipFlow },
+            );
+            const latestNames = new Set(availableNames());
+            proxies = proxies.filter(
+                (item) =>
+                    !subnames.includes(item._subName) ||
+                    latestNames.has(item._subName),
             );
             if (proxies.length === 0) {
                 throw new Error(`组合订阅 ${name} 中不含有效节点`);
@@ -804,6 +839,7 @@ async function produceArtifact({
                 produceOpts,
             );
         } catch (err) {
+            if (isSubscriptionUnavailable(err)) throw err;
             if (
                 !shouldFallbackIgnoreFailedRemoteSub(
                     collectionIgnoreFailedRemoteSub,
@@ -1216,9 +1252,7 @@ async function syncArtifacts(options = {}) {
                     $.error(
                         `生成同步配置 ${formatArtifactLogName(
                             artifact,
-                        )} 发生错误: ${
-                            e.message ?? e
-                        }`,
+                        )} 发生错误: ${e.message ?? e}`,
                     );
                     invalid.push(artifact.name);
                 }
@@ -1389,6 +1423,7 @@ async function syncArtifact(req, res) {
         const artifact = await syncArtifactItem(name);
         success(res, artifact);
     } catch (err) {
+        if (isSubscriptionUnavailable(err)) return failed(res, err, 409);
         $.error(`远程配置 ${name} 发生错误: ${err.message ?? err}`);
         failed(
             res,

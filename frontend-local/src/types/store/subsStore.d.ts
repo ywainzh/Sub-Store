@@ -4,6 +4,34 @@ interface SubsStoreState {
   flows: FlowsDict;
   files: any[];
   shares: Share[];
+  subscriptionStatuses: SubscriptionStatus[];
+  collectionStatuses: CollectionStatus[];
+}
+
+interface SourceAvailability {
+  index: number;
+  active: boolean;
+  reason: 'manual' | 'expired' | 'exhausted' | null;
+  checkedAt: number | null;
+  checkState: 'unchecked' | 'unsupported' | 'observed' | 'missing' | 'error';
+  flow?: Partial<Flow['data']>;
+}
+
+interface CollectionStatus {
+  name: string;
+  enabled: boolean;
+  active: boolean;
+  reason: 'manual' | 'expired' | 'exhausted' | 'empty' | null;
+  availableSources: number;
+  sourceCount: number;
+  partial: boolean;
+  firstAvailable?: string | null;
+  checkedAt: number | null;
+}
+
+interface SubscriptionStatus extends CollectionStatus {
+  autoManage: boolean;
+  sources: SourceAvailability[];
 }
 
 interface FlowsDict {
@@ -31,6 +59,8 @@ interface Process {
 }
 
 interface Sub {
+  enabled?: boolean;
+  autoManage?: boolean;
   name: string;
   content?: string;
   displayName?: string;
@@ -51,6 +81,7 @@ interface Sub {
 }
 
 interface Collection {
+  enabled?: boolean;
   name: string;
   displayName?: string;
   remark?: string;

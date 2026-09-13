@@ -1,3 +1,4 @@
+import { isSubscriptionUnavailable } from '@/utils/subscription-status';
 import resourceCache from '@/utils/resource-cache';
 import scriptResourceCache from '@/utils/script-resource-cache';
 import { isIPv4, isIPv6, ipAddress, isPlainObject } from '@/utils';
@@ -660,8 +661,7 @@ function normalizeResolveDomainTimeout(timeout, defaultTimeout) {
     if (
         typeof defaultTimeout === 'undefined' ||
         defaultTimeout === null ||
-        (typeof defaultTimeout === 'string' &&
-            defaultTimeout.trim() === '')
+        (typeof defaultTimeout === 'string' && defaultTimeout.trim() === '')
     ) {
         return 8000;
     }
@@ -815,9 +815,7 @@ function getCachedDomainResolverResult(
         tlsSkipCertVerify,
     );
     const cached = id ? resourceCache.get(id) : null;
-    return provider === 'Custom'
-        ? unpackCustomDnsCachedResult(cached)
-        : cached;
+    return provider === 'Custom' ? unpackCustomDnsCachedResult(cached) : cached;
 }
 
 function formatResolverUrlLog(provider, resolverUrl) {
@@ -1169,9 +1167,9 @@ function ResolveDomainOperator({
         );
     }
     $.info(
-        `Domain Resolver: [${_type}] ${provider} ${edns || ''} ${
-            formatResolverUrlInfo(provider, customDnsUrl)
-        }${
+        `Domain Resolver: [${_type}] ${provider} ${
+            edns || ''
+        } ${formatResolverUrlInfo(provider, customDnsUrl)}${
             customDnsTlsSkipCertVerify ? ' tlsSkipCertVerify=enabled' : ''
         } concurrency=${concurrency}${
             provider === 'Custom'
@@ -1642,6 +1640,7 @@ async function ApplyFilter(filter, objs) {
     try {
         selected = await filter.func(objs);
     } catch (err) {
+        if (isSubscriptionUnavailable(err)) throw err;
         let funcErr = '';
         let funcErrMsg = `${err.message ?? err}`;
         if (funcErrMsg.includes('$server is not defined')) {
@@ -1655,6 +1654,7 @@ async function ApplyFilter(filter, objs) {
         try {
             selected = await filter.nodeFunc(objs);
         } catch (err) {
+            if (isSubscriptionUnavailable(err)) throw err;
             $.error(
                 `Cannot apply filter ${filter.name}(shortcut script)! Reason: ${err}`,
             );
@@ -1678,6 +1678,7 @@ async function ApplyOperator(operator, objs) {
         const output_ = await operator.func(output);
         if (output_) output = output_;
     } catch (err) {
+        if (isSubscriptionUnavailable(err)) throw err;
         let funcErr = '';
         let funcErrMsg = `${err.message ?? err}`;
         if (
@@ -1698,6 +1699,7 @@ async function ApplyOperator(operator, objs) {
             const output_ = await operator.nodeFunc(output);
             if (output_) output = output_;
         } catch (err) {
+            if (isSubscriptionUnavailable(err)) throw err;
             $.error(
                 `Cannot apply operator ${operator.name}(shortcut script)! Reason: ${err}`,
             );

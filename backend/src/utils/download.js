@@ -1,3 +1,4 @@
+import { isSubscriptionUnavailable } from '@/utils/subscription-status';
 import { SETTINGS_KEY, FILES_KEY, MODULES_KEY } from '@/constants';
 import { HTTP, ENV } from '@/vendor/open-api';
 import { hex_md5 } from '@/vendor/md5';
@@ -208,6 +209,66 @@ export default async function download(
         `${customHeaders ? JSON.stringify(customHeaders) : userAgent}${url}`,
     );
 
+    // Internal files must re-evaluate subscription availability before any content cache.
+    const downloadUrlMatch = url
+        .split('#')[0]
+        .match(/^\/api\/(file|module)\/(.+)/);
+    if (downloadUrlMatch) {
+        let type = '';
+        try {
+            type = downloadUrlMatch?.[1];
+            let name = downloadUrlMatch?.[2];
+            if (name == null) {
+                throw new Error(`本地 ${type} URL 无效: ${url}`);
+            }
+            name = decodeURIComponent(name);
+            const key = type === 'module' ? MODULES_KEY : FILES_KEY;
+            const item = findByName($.read(key), name);
+            if (!item) {
+                throw new Error(`找不到 ${type}: ${name}`);
+            }
+
+            if (type === 'module') {
+                return formatPlainDownloadResult(item.content, returnRaw);
+            } else {
+                return formatPlainDownloadResult(
+                    await produceArtifact({
+                        type: 'file',
+                        name,
+                        noFlow: options?.noFlow,
+                    }),
+                    returnRaw,
+                );
+            }
+        } catch (err) {
+            if (isSubscriptionUnavailable(err)) throw err;
+            $.error(
+                `Error when loading ${type}: ${
+                    url.split('#')[0]
+                }.\n Reason: ${err}`,
+            );
+            throw new Error(`无法加载 ${type}: ${url}`);
+        }
+    } else if (
+        url?.startsWith('/') ||
+        (isNode && typeof url === 'string' && getPath().isAbsolute(url))
+    ) {
+        try {
+            const fs = getFs();
+            return formatPlainDownloadResult(
+                fs.readFileSync(url.split('#')[0], 'utf8'),
+                returnRaw,
+            );
+        } catch (err) {
+            $.error(
+                `Error when reading local file: ${
+                    url.split('#')[0]
+                }.\n Reason: ${err}`,
+            );
+            throw new Error(`无法从该路径读取文本内容: ${url}`);
+        }
+    }
+
     if ($arguments?.cacheKey === true) {
         $.error(`使用自定义缓存时 cacheKey 的值不能为空`);
         $arguments.cacheKey = undefined;
@@ -287,61 +348,6 @@ export default async function download(
                 }),
                 returnRaw,
             );
-        }
-    }
-
-    const downloadUrlMatch = url
-        .split('#')[0]
-        .match(/^\/api\/(file|module)\/(.+)/);
-    if (downloadUrlMatch) {
-        let type = '';
-        try {
-            type = downloadUrlMatch?.[1];
-            let name = downloadUrlMatch?.[2];
-            if (name == null) {
-                throw new Error(`本地 ${type} URL 无效: ${url}`);
-            }
-            name = decodeURIComponent(name);
-            const key = type === 'module' ? MODULES_KEY : FILES_KEY;
-            const item = findByName($.read(key), name);
-            if (!item) {
-                throw new Error(`找不到 ${type}: ${name}`);
-            }
-
-            if (type === 'module') {
-                return formatPlainDownloadResult(item.content, returnRaw);
-            } else {
-                return formatPlainDownloadResult(
-                    await produceArtifact({
-                        type: 'file',
-                        name,
-                        noFlow: options?.noFlow,
-                    }),
-                    returnRaw,
-                );
-            }
-        } catch (err) {
-            $.error(
-                `Error when loading ${type}: ${
-                    url.split('#')[0]
-                }.\n Reason: ${err}`,
-            );
-            throw new Error(`无法加载 ${type}: ${url}`);
-        }
-    } else if (url?.startsWith('/') || (isNode && typeof url === 'string' && getPath().isAbsolute(url))) {
-        try {
-            const fs = getFs();
-            return formatPlainDownloadResult(
-                fs.readFileSync(url.split('#')[0], 'utf8'),
-                returnRaw,
-            );
-        } catch (err) {
-            $.error(
-                `Error when reading local file: ${
-                    url.split('#')[0]
-                }.\n Reason: ${err}`,
-            );
-            throw new Error(`无法从该路径读取文本内容: ${url}`);
         }
     }
 

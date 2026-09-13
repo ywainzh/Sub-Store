@@ -16,6 +16,10 @@ import { InternalServerError, RequestInvalidError } from '@/restful/errors';
 import Gist from '@/utils/gist';
 import migrate from '@/utils/migration';
 import env from '@/utils/env';
+import {
+    normalizeImportedAvailability,
+    reconcileSubscriptionStatuses,
+} from '@/utils/subscription-status';
 import { formatDateTime } from '@/utils';
 import {
     AGE_SECRET_KEY,
@@ -76,12 +80,14 @@ export default function register($app) {
                         throw new Error('备份文件校验失败, 无法还原');
                     }
                 }
+                normalizeImportedAvailability(content);
                 $.write(JSON.stringify(content, null, `  `), '#sub-store');
                 if ($.env.isNode) {
                     $.cache = content;
                     $.persistCache();
                 }
                 migrate();
+                reconcileSubscriptionStatuses();
                 success(res);
             } catch (e) {
                 $.error(
@@ -94,6 +100,7 @@ export default function register($app) {
                         'Invalid backup data, failed to restore!',
                         `Reason: ${e.message ?? e}`,
                     ),
+                    400,
                 );
             }
         });
@@ -323,13 +330,11 @@ async function gistBackupAction(
             $.info(`上传备份中...`);
             await $.wait(100);
             try {
-                await gist.upload(
-                    {
-                        [GIST_BACKUP_FILE_NAME]: {
-                            content: uploadContent,
-                        },
-                    }
-                );
+                await gist.upload({
+                    [GIST_BACKUP_FILE_NAME]: {
+                        content: uploadContent,
+                    },
+                });
 
                 $.info(`上传备份完成`);
             } catch (err) {
@@ -434,6 +439,7 @@ async function gistBackupAction(
                 }
             });
             // restore settings
+            normalizeImportedAvailability(content);
             $.write(JSON.stringify(content, null, `  `), '#sub-store');
             if ($.env.isNode) {
                 $.cache = content;
@@ -441,6 +447,7 @@ async function gistBackupAction(
             }
             $.info(`perform migration after restoring from gist...`);
             migrate();
+            reconcileSubscriptionStatuses();
             $.info(`migration completed`);
             $.info(`还原备份完成`);
             break;

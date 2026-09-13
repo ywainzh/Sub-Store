@@ -1,3 +1,8 @@
+import {
+    prepareCollection,
+    availableSubscriptionUrls,
+    isSubscriptionUnavailable,
+} from '@/utils/subscription-status';
 import { InternalServerError } from './errors';
 import { ProxyUtils } from '@/core/proxy-utils';
 import { findByName } from '@/utils/database';
@@ -64,6 +69,7 @@ async function previewFile(req, res) {
             processed: normalizeClashYaml(processed?.$content ?? ''),
         });
     } catch (err) {
+        if (isSubscriptionUnavailable(err)) return failed(res, err, 409);
         $.error(err.message ?? err);
         failed(
             res,
@@ -113,7 +119,9 @@ async function compareSub(req, res) {
                         } catch (err) {
                             errors[url] = err;
                             $.error(
-                                `订阅 ${sub.name} 的远程订阅 ${maskAgeSecretInUrl(
+                                `订阅 ${
+                                    sub.name
+                                } 的远程订阅 ${maskAgeSecretInUrl(
                                     url,
                                 )} 发生错误: ${err}`,
                             );
@@ -127,9 +135,7 @@ async function compareSub(req, res) {
             if (Object.keys(errors).length > 0) {
                 const message = `订阅 ${
                     sub.name
-                } 的远程订阅 ${formatAgeSafeUrls(
-                    errors,
-                )} 发生错误, 请查看日志`;
+                } 的远程订阅 ${formatAgeSafeUrls(errors)} 发生错误, 请查看日志`;
                 handleIgnoreFailedRemoteSubError({
                     mode,
                     message,
@@ -216,20 +222,9 @@ async function compareCollection(req, res) {
 
     try {
         const allSubs = $.read(SUBS_KEY);
-        const subnames = [...collection.subscriptions];
-        let subscriptionTags = collection.subscriptionTags;
-        if (Array.isArray(subscriptionTags) && subscriptionTags.length > 0) {
-            allSubs.forEach((sub) => {
-                if (
-                    Array.isArray(sub.tag) &&
-                    sub.tag.length > 0 &&
-                    !subnames.includes(sub.name) &&
-                    sub.tag.some((tag) => subscriptionTags.includes(tag))
-                ) {
-                    subnames.push(sub.name);
-                }
-            });
-        }
+        const subnames = (await prepareCollection(collection)).map(
+            (sub) => sub.name,
+        );
         const results = {};
         const errors = {};
         const rawResults = {};
@@ -253,35 +248,33 @@ async function compareCollection(req, res) {
                     } else {
                         const errors = {};
                         const downloaded = await Promise.all(
-                            sub.url
-                                .split(/[\r\n]+/)
-                                .map((i) => i.trim())
-                                .filter((i) => i.length)
-                                .map(async (url) => {
-                                    try {
-                                        return await download(
+                            availableSubscriptionUrls(sub).map(async (url) => {
+                                try {
+                                    return await download(
+                                        url,
+                                        sub.ua,
+                                        undefined,
+                                        sub.proxy,
+                                        undefined,
+                                        undefined,
+                                        sub.noCache,
+                                        true,
+                                        { returnRaw: true },
+                                    );
+                                } catch (err) {
+                                    if (isSubscriptionUnavailable(err))
+                                        throw err;
+                                    errors[url] = err;
+                                    $.error(
+                                        `订阅 ${
+                                            sub.name
+                                        } 的远程订阅 ${maskAgeSecretInUrl(
                                             url,
-                                            sub.ua,
-                                            undefined,
-                                            sub.proxy,
-                                            undefined,
-                                            undefined,
-                                            sub.noCache,
-                                            true,
-                                            { returnRaw: true },
-                                        );
-                                    } catch (err) {
-                                        errors[url] = err;
-                                        $.error(
-                                            `订阅 ${
-                                                sub.name
-                                            } 的远程订阅 ${maskAgeSecretInUrl(
-                                                url,
-                                            )} 发生错误: ${err}`,
-                                        );
-                                        return '';
-                                    }
-                                }),
+                                        )} 发生错误: ${err}`,
+                                    );
+                                    return '';
+                                }
+                            }),
                         );
                         raw = downloaded.map((i) => i.result ?? i);
                         sourceRaw = downloaded.map((i) => i.raw ?? i);
@@ -339,6 +332,7 @@ async function compareCollection(req, res) {
                     results[name] = currentProxies;
                     rawResults[name] = currentRaw;
                 } catch (err) {
+                    if (isSubscriptionUnavailable(err)) throw err;
                     if (shouldFallbackIgnoreFailedRemoteSub(subMode)) {
                         notifyIgnoreFailedRemoteSubFallback({
                             mode: subMode,
@@ -352,7 +346,9 @@ async function compareCollection(req, res) {
                             },
                         });
                         $.error(
-                            `订阅 ${sub.name} 在组合订阅预览中启用兜底后返回空结果: ${
+                            `订阅 ${
+                                sub.name
+                            } 在组合订阅预览中启用兜底后返回空结果: ${
                                 err.message ?? err
                             }`,
                         );
@@ -424,6 +420,7 @@ async function compareCollection(req, res) {
 
         success(res, { original, processed });
     } catch (err) {
+        if (isSubscriptionUnavailable(err)) return failed(res, err, 409);
         if (shouldFallbackIgnoreFailedRemoteSub(collectionMode)) {
             notifyIgnoreFailedRemoteSubFallback({
                 mode: collectionMode,

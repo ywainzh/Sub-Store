@@ -26,14 +26,35 @@
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/subs` | 列出全部订阅 |
+| GET | `/api/subs/status` | 本地读取单条及组合的实际启用状态，不访问供应商 |
 | POST | `/api/subs` | 创建订阅（body=订阅对象） |
 | GET | `/api/sub/:name` | 读取单条订阅 |
-| PATCH | `/api/sub/:name` | 更新订阅（body 传部分字段即可） |
+| PATCH | `/api/sub/:name` | 更新订阅，可传 `enabled`、`autoManage` 等部分字段 |
+| POST | `/api/sub/:name/check` | 立即检查已保存来源，绕过旧流量缓存，返回状态及套餐信息 |
+| PATCH | `/api/collection/:name` | 更新组合，`enabled` 控制整体启停 |
 | DELETE | `/api/sub/:name` | 删除订阅 |
 | POST | `/api/preview/sub` | 预览/解析订阅内容（上报节点，不写库） |
 | GET | `/download/:name/:target` | 导出某订阅为指定平台（如 `mihomo`） |
 
 > `:name` 需 **URL 编码**（中文名、空格、`/` 都要 encode）。
+
+### 启停与自动检测（v0.1.2 起）
+
+`enabled` 是手动意愿，默认 `true`；远程订阅 `autoManage` 默认 `true`，纯本地订阅只支持手动启停。关闭自动检测可手动启用已到期的来源。两个字段只接受布尔值。运行状态由后端维护，不能通过导入或 PATCH 的 `active`、`reason` 等字段覆盖。
+
+```json
+{"enabled": false}
+```
+
+把以上 JSON PATCH 到单条或组合接口即可暂停输出。单条停用保留配置、组合成员关系和分享 token；组合会排除该条并继续输出其他可用节点。单条自身及整体关闭的组合下载／分享返回 `409`，重新启用后原分享链接恢复。文件页没有独立开关，文件来源和节点注入遵循同一规则。管理读取、配置导出和单条调试预览仍然可用。
+
+状态接口返回 `data.subscriptions` 和 `data.collections`。每项包含 `name`、`enabled`、`active`、`reason`、`checkedAt`、`availableSources`、`sourceCount`、`partial`；组合还有 `firstAvailable`，单条还有 `autoManage` 和按 URL 顺序排列的 `sources`。`reason` 为 `manual`、`expired`、`exhausted`、`empty` 或 `null`，时间为毫秒时间戳。来源的 `flow.expires` 使用秒时间戳，`flow.total` 与 `flow.usage` 使用字节；仅返回供应商提供的合法字段。
+
+检测间隔为 30 分钟，最多两条来源并发。手动关闭项不定期检查，自动停用项继续检查以便恢复。下载前复用最近检测，过期才刷新；`POST /api/sub/:name/check` 可立即重查已保存来源。查询参数 `noFlow` 不绕过启停规则。已保存的 `noFlow` 配置仍表示不查询套餐信息；无法获得信息的来源不会被新判为额度用尽。
+
+多个 URL 分别判断，混合本地内容保留。有效到期时间已到或合法正总额度被上传／下载之和用尽才自动停用；缺失、负数、非法值、零额度和网络失败不能解除已有停用判定。恢复须取得相关限制解除的新信息。组合不以首个成员的流量决定整组状态，仅用首个实际可用来源的流量做显示和透传。
+
+Clash／小火箭在下次更新订阅时同步节点变化。旧版 **v0.1.1 及更早版本不执行这些启停规则**，回退旧版可能重新输出已停用来源。
 
 ---
 
@@ -56,7 +77,7 @@ ssh oracle_vm 'python3 - <<PY
 import json, os, urllib.request, urllib.parse
 name = "节点名"
 vl = "vless://UUID@服务器:端口?encryption=none&security=reality&sni=www.example.com&fp=chrome&pbk=PUBLIC_KEY&sid=SHORT_ID&type=tcp&headerType=none#节点名"
-body = {"name": name, "source": "local", "content": vl, "enable": True, "ignoreFailedRemoteSub": False}
+body = {"name": name, "source": "local", "content": vl, "enabled": True, "ignoreFailedRemoteSub": False}
 req = urllib.request.Request("http://127.0.0.1:3000/api/subs",
       data=json.dumps(body).encode(), headers={"Content-Type":"application/json", "Authorization": "Bearer " + os.environ["SUB_STORE_API_TOKEN"]})
 print(urllib.request.urlopen(req, timeout=12).read().decode())

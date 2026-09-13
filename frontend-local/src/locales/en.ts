@@ -1,4 +1,26 @@
 export default {
+  availability: {
+    "flowSource": "From {name}",
+    "enabled": "Enabled",
+    "manual": "Manually disabled",
+    "expired": "Expired",
+    "exhausted": "Quota exhausted",
+    "empty": "No available subscriptions",
+    "enable": "Enable subscription",
+    "automatic": "Automatic checks",
+    "autoHint": "Pause when expired or out of data and resume after renewal. Manually disabled subscriptions stay disabled.",
+    "manualHint": "Pause output while keeping the content and share links. Other sources in collections remain available.",
+    "localHint": "Local subscriptions support manual switching only.",
+    "noFlowHint": "Flow queries are disabled; plan status cannot be checked automatically.",
+    "partial": "{available}/{total} sources available",
+    "checked": "Last checked: {time}",
+    "unchecked": "Not checked yet",
+    "unavailable": "No fresh plan information; previous state retained",
+    "check": "Check now",
+    "changeFailed": "Unable to update status. Please retry.",
+    "checkFailed": "Refresh failed. Please retry.",
+    "switchLabel": "Enable or disable {name}"
+},
   // specific word of Sub-Store
   specificWord: {
     singleSub: "Single",

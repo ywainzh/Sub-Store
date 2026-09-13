@@ -142,6 +142,9 @@
                   appearanceSetting.isSimpleReicon)
               "
               class="refresh-sub-flow"
+              :disabled="availabilityBusy"
+              :title="hasAvailability ? t('availability.check') : undefined"
+              :aria-label="hasAvailability ? t('availability.check') : undefined"
               @click.stop="onClickRefresh"
             >
               <font-awesome-icon icon="fa-solid fa-arrow-rotate-right" />
@@ -167,6 +170,19 @@
               <font-awesome-icon icon="fa-solid fa-angles-right" />
             </button>
           </div>
+        </div>
+        <div v-if="hasAvailability" class="sub-item-availability">
+          <span class="availability-label" :class="{ paused: !availability?.active }" :title="availabilityCheckedAt" aria-live="polite">
+            {{ availabilityLabel }}
+            <span v-if="availability?.partial" class="availability-count"> · {{ t('availability.partial', { available: availability.availableSources, total: availability.sourceCount }) }}</span>
+          </span>
+          <StateSwitch
+            :model-value="availability?.active ?? props[props.type].enabled !== false"
+            :label="t('availability.switchLabel', { name: displayName })"
+            :loading="availabilityBusy"
+            :disabled="!availability"
+            @update:model-value="onToggleAvailability"
+          />
         </div>
         <template v-if="!appearanceSetting.isSimpleMode">
           <template v-if="isDualNonSimpleMode">
@@ -231,6 +247,9 @@
             <span>{{ remarkText }}</span>
           </p>
         </template>
+        <p v-if="collectionFlowDetail" class="sub-item-remark collection-flow-detail" :title="collectionFlowDetail">
+          {{ collectionFlowDetail }}
+        </p>
       </div>
     </div>
     <!-- 加入判断 开启拖动不显示 -->
@@ -332,6 +351,7 @@ import { useSubsApi } from "@/api/subs";
 import logoIcon from "@/assets/icons/logo.png";
 import logoRedIcon from "@/assets/icons/logo-red.png";
 import PreviewPanel from "@/components/PreviewPanel.vue";
+import StateSwitch from "@/components/StateSwitch.vue";
 import { useBackend } from "@/hooks/useBackend";
 import { useHostAPI } from "@/hooks/useHostAPI";
 import { usePopupRoute } from "@/hooks/usePopupRoute";
@@ -359,6 +379,26 @@ const emit = defineEmits(["update:visible", "share"]);
 const { t } = useI18n();
 
 const { env } = useBackend();
+const hasAvailability = computed(() => !!env.value.feature?.subscriptionAvailability);
+const availabilityBusy = ref(false);
+const availability = computed(() => (props.type === 'sub' ? subsStore.subscriptionStatuses : subsStore.collectionStatuses).find(item => item.name === props[props.type].name));
+const availabilityLabel = computed(() => t(`availability.${availability.value?.active ? 'enabled' : availability.value?.reason || 'unchecked'}`));
+const availabilityCheckedAt = computed(() => {
+  const status = availability.value;
+  return status?.checkedAt ? t('availability.checked', { time: dayjs(status.checkedAt).format('MM-DD HH:mm') }) : t('availability.unchecked');
+});
+const onToggleAvailability = async (enabled: boolean) => {
+  if (availabilityBusy.value) return;
+  availabilityBusy.value = true;
+  try {
+    const result = await subsStore.setAvailability(props.type, props[props.type].name, enabled);
+    showNotify({ title: t(`availability.${result?.active ? 'enabled' : result?.reason || 'empty'}`) });
+  } catch {
+    showNotify({ type: 'danger', title: t('availability.changeFailed') });
+  } finally {
+    availabilityBusy.value = false;
+  }
+};
 
 // console.log('props.disabled')
 // console.log(props.disabled)
@@ -483,9 +523,15 @@ const simpleCollectionDetailLine = computed(() => {
   return appendRemarkToSimpleDetailLine(collectionDetail.value);
 });
 
+const flowSub = computed(() => {
+  if (props.type === 'sub') return props.sub;
+  if (!hasAvailability.value || props.collection.noFlow || props.collection.firstSubFlow === false) return;
+  return subsStore.getOneSub(availability.value?.firstAvailable);
+});
 const flow = computed(() => {
-  if (props.type === "sub") {
-    if (props.sub.noFlow) {
+  const sub = flowSub.value;
+  if (sub) {
+    if (sub.noFlow) {
       return {
         firstLine: t("subPage.subItem.noFlow"),
         secondLine: ``,
@@ -493,15 +539,23 @@ const flow = computed(() => {
     }
     const urlList = Object.keys(flows.value);
     const localOnly =
-      props.sub.source === "local" &&
-      !["localFirst", "remoteFirst"].includes(props.sub.mergeSources);
-    if (localOnly && !props.sub.subUserinfo) return t("subPage.subItem.local");
-    if (isFlowFetching.value && !urlList.includes(props.sub.url))
+      sub.source === "local" &&
+      !["localFirst", "remoteFirst"].includes(sub.mergeSources);
+    if (localOnly && !sub.subUserinfo) return t("subPage.subItem.local");
+    if (isFlowFetching.value && !urlList.includes(sub.url))
       return t("subPage.subItem.loading");
 
     const target = toRaw(
-      flows.value[props.sub.url] || flows.value[props.sub.name],
+      flows.value[sub.url] || flows.value[sub.name],
     );
+    const status = subsStore.subscriptionStatuses.find(item => item.name === sub.name);
+    const observed = (status?.sources.find(item => item.active) || status?.sources[0])?.flow;
+    if (observed && !observed.usage && observed.expires) {
+      return {
+        firstLine: t('subPage.subItem.noFlowInfo'),
+        secondLine: `${t('subPage.subItem.expires')}: ${dayjs.unix(observed.expires).format('YYYY-MM-DD HH:mm')}`,
+      };
+    }
     if (!target) {
       return {
         firstLine: t("subPage.subItem.noRecord"),
@@ -619,6 +673,11 @@ const flow = computed(() => {
       secondLine: ``,
     };
   }
+});
+const collectionFlowDetail = computed(() => {
+  if (props.type !== 'collection' || !flowSub.value || typeof flow.value !== 'object' || !('progress' in flow.value)) return '';
+  const source = flowSub.value.displayName || flowSub.value.name;
+  return [t('availability.flowSource', { name: source }), flow.value.firstLine, flow.value.secondLine].filter(Boolean).join(' · ');
 });
 const simpleSubDetailLine = computed(() => {
   if (props.type !== "sub") {
@@ -985,18 +1044,28 @@ const onClickCopyLink = async () => {
 };
 
 const onClickRefresh = async () => {
+  if (availabilityBusy.value) return;
+  availabilityBusy.value = true;
   Toast.loading(t("globalNotify.refresh.loading"), {
     cover: true,
     id: "refresh",
   });
   try {
-    await subsApi.downloadOne(name, { noCache: true });
-  } catch (e) {
-    console.error(e);
+    const status = hasAvailability.value ? await subsStore.checkAvailability(name) : undefined;
+    if (status?.active !== false) {
+      const downloaded = await subsApi.downloadOne(name, { noCache: true });
+      if (downloaded.status >= 400 || downloaded.data?.status === 'failed') throw new Error('Download failed');
+    }
+    await refreshSubFlowsIfNeeded();
+    if (hasAvailability.value) await subsStore.fetchStatuses();
+    const unknown = status?.sources.some(source => ['error', 'missing'].includes(source.checkState));
+    showNotify({ title: unknown ? t('availability.unavailable') : status?.active === false ? t(`availability.${status.reason}`) : t("globalNotify.refresh.succeed") });
+  } catch {
+    showNotify({ type: 'danger', title: t('availability.checkFailed') });
+  } finally {
+    availabilityBusy.value = false;
+    Toast.hide("refresh");
   }
-  await refreshSubFlowsIfNeeded()
-  Toast.hide("refresh");
-  showNotify({ title: t("globalNotify.refresh.succeed") });
 };
 
 const refreshSubFlowsIfNeeded = async () => {
@@ -1010,6 +1079,17 @@ const refreshSubFlowsIfNeeded = async () => {
 </script>
 
 <style lang="scss" scoped>
+.sub-item-availability {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  min-width: 0;
+  .availability-label { font-size: 12px; color: var(--primary-color); line-height: 1.5; }
+  .availability-label.paused, .availability-count { color: var(--comment-text-color); }
+}
+.collection-flow-detail { overflow-wrap: anywhere; }
 .sub-item-swipe {
   position: relative;
   display: block;

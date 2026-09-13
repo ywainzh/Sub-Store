@@ -12,6 +12,7 @@ import {
 import { gistBackupAction } from '@/restful/miscs';
 import { SETTINGS_KEY } from '@/constants';
 import { startArtifactCronJobs } from '@/utils/artifact-cron';
+import { startSubscriptionChecks } from '@/utils/subscription-status';
 import { createFrontendStaticMiddleware } from '@/utils/frontend-static';
 
 import registerSubscriptionRoutes from './subscriptions';
@@ -158,6 +159,7 @@ export default function serve() {
 
     if ($.env.isNode) {
         startArtifactCronJobs(syncArtifactItem);
+        startSubscriptionChecks();
 
         // Deprecated: SUB_STORE_BACKEND_CRON, SUB_STORE_CRON
         const backend_sync_cron = eval(

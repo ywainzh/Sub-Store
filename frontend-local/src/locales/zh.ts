@@ -1,4 +1,26 @@
 export default {
+  availability: {
+    "enabled": "已启用",
+    "manual": "手动停用",
+    "expired": "已到期",
+    "exhausted": "流量用尽",
+    "empty": "暂无可用订阅",
+    "enable": "启用订阅",
+    "automatic": "自动检测",
+    "autoHint": "到期或流量用尽时停用，恢复后自动启用。手动关闭不会自动恢复。",
+    "manualHint": "关闭后暂停输出，保留内容和原分享链接。组合中的其他来源继续可用。",
+    "localHint": "本地订阅仅支持手动启停。",
+    "noFlowHint": "已关闭流量查询，无法自动判断套餐状态。",
+    "partial": "{available}/{total} 个来源可用",
+    "flowSource": "来自 {name}",
+    "checked": "上次检测：{time}",
+    "unchecked": "尚未检测",
+    "unavailable": "未获取到最新套餐信息，保留原状态",
+    "check": "立即检测",
+    "changeFailed": "状态更新失败，请重试",
+    "checkFailed": "刷新失败，请重试",
+    "switchLabel": "{name}：启用或停用"
+},
   // Sub-Store 的专有名词
   specificWord: {
     singleSub: '单条订阅',

@@ -17,6 +17,12 @@ import {
 } from '@/restful/age-output';
 import { findShareToken } from '@/restful/token';
 import { maskAgeSecretInUrl } from '@/utils/age';
+import {
+    isSubscriptionUnavailable,
+    availableSubscriptionUrls,
+    collectionSubscriptions,
+    getSubscriptionStatus,
+} from '@/utils/subscription-status';
 
 function getMihomoExternalOptions(query) {
     const useMihomoExternal = query.target === 'SurgeMac';
@@ -247,17 +253,19 @@ async function downloadSubscription(req, res) {
     }
 
     const allSubs = $.read(SUBS_KEY);
-    const fakeSub = _fakeNode ? {
-        name: 'fakeNodeInfo',
-        source: 'local',
-        content:
-            'invalid share = ss, 1.0.0.1, 80, encrypt-method=aes-128-gcm, password=password',
-    } : {
-        name: 'fakeSub',
-        source: 'remote',
-        url: '',
-    };
-    const sub = (_fakeNode || _fakeSub) ? fakeSub : findByName(allSubs, name);
+    const fakeSub = _fakeNode
+        ? {
+              name: 'fakeNodeInfo',
+              source: 'local',
+              content:
+                  'invalid share = ss, 1.0.0.1, 80, encrypt-method=aes-128-gcm, password=password',
+          }
+        : {
+              name: 'fakeSub',
+              source: 'remote',
+              url: '',
+          };
+    const sub = _fakeNode || _fakeSub ? fakeSub : findByName(allSubs, name);
     if (sub) {
         try {
             const noFlow = req.query.noFlow || sub.noFlow;
@@ -293,7 +301,7 @@ async function downloadSubscription(req, res) {
                 noFlow,
             };
             if (_fakeNode || _fakeSub) {
-                if(_fakeNode) {
+                if (_fakeNode) {
                     $.info(`返回假节点信息`);
                 }
                 delete opt.name;
@@ -307,7 +315,10 @@ async function downloadSubscription(req, res) {
             ) {
                 try {
                     url =
-                        `${url || sub.url}`
+                        `${
+                            availableSubscriptionUrls(sub, url || sub.url)[0] ||
+                            ''
+                        }`
                             .split(/[\r\n]+/)
                             .map((i) => i.trim())
                             .filter((i) => i.length)?.[0] || '';
@@ -333,11 +344,7 @@ async function downloadSubscription(req, res) {
                             }
                         }
                     }
-                    if (
-                        !noFlow &&
-                        !$arguments.noFlow &&
-                        /^https?/.test(url)
-                    ) {
+                    if (!noFlow && !$arguments.noFlow && /^https?/.test(url)) {
                         // forward flow headers
                         flowInfo = await getFlowHeaders(
                             $arguments?.insecure ? `${url}#insecure` : url,
@@ -461,6 +468,7 @@ async function downloadSubscription(req, res) {
                 }),
             );
         } catch (err) {
+            if (isSubscriptionUnavailable(err)) return failed(res, err, 409);
             $.notify(
                 `🌍 Sub-Store 下载订阅失败`,
                 `❌ 无法下载订阅：${name}！`,
@@ -621,7 +629,9 @@ async function downloadCollection(req, res) {
             if (!noFlow && collection.firstSubFlow !== false) {
                 // forward flow header from the first subscription in this collection
                 const allSubs = $.read(SUBS_KEY);
-                const subnames = collection.subscriptions;
+                const subnames = collectionSubscriptions(collection)
+                    .filter((sub) => getSubscriptionStatus(sub).active)
+                    .map((sub) => sub.name);
                 if (subnames.length > 0) {
                     const sub = findByName(allSubs, subnames[0]);
                     if (
@@ -630,7 +640,7 @@ async function downloadCollection(req, res) {
                     ) {
                         try {
                             let url =
-                                `${sub.url}`
+                                `${availableSubscriptionUrls(sub)[0] || ''}`
                                     .split(/[\r\n]+/)
                                     .map((i) => i.trim())
                                     .filter((i) => i.length)?.[0] || '';
@@ -803,6 +813,7 @@ async function downloadCollection(req, res) {
                 }),
             );
         } catch (err) {
+            if (isSubscriptionUnavailable(err)) return failed(res, err, 409);
             $.notify(
                 `🌍 Sub-Store 下载组合订阅失败`,
                 `❌ 下载组合订阅错误：${name}！`,

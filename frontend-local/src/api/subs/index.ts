@@ -3,6 +3,13 @@ import { AxiosPromise } from 'axios';
 
 export function useSubsApi() {
   return {
+    getStatuses: (): AxiosPromise<MyAxiosRes> => request({ url: '/api/subs/status', method: 'get' }),
+    checkAvailability: (name: string): AxiosPromise<MyAxiosRes> => request({
+      url: `/api/sub/${encodeURIComponent(name)}/check`, method: 'post',
+    }),
+    setAvailability: (type: 'sub' | 'collection', name: string, enabled: boolean): AxiosPromise<MyAxiosRes> => request({
+      url: `/api/${type}/${encodeURIComponent(name)}`, method: 'patch', data: { enabled },
+    }),
     getSubs: (): AxiosPromise<MyAxiosRes> => {
       return request({
         url: '/api/subs',

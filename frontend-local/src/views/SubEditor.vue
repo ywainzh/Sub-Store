@@ -148,6 +148,16 @@
         <ImageFitPicker v-model="form.iconFit" :fallback-value="appearanceSetting.iconFit" />
         </div>
         <div v-show="!editorTabsEnabled || activeEditorTab === 'content'" class="editor-tab-content">
+        <template v-if="globalStore.env.feature?.subscriptionAvailability">
+          <nut-form-item :label="t('availability.enable')">
+            <StateSwitch v-model="form.enabled" :label="t('availability.enable')" />
+            <p class="availability-help">{{ t('availability.manualHint') }}</p>
+          </nut-form-item>
+          <nut-form-item v-if="editType === 'subs'" :label="t('availability.automatic')">
+            <StateSwitch v-if="isRemoteForm" v-model="form.autoManage" :label="t('availability.automatic')" />
+            <p class="availability-help">{{ t(!isRemoteForm ? 'availability.localHint' : form.noFlow ? 'availability.noFlowHint' : 'availability.autoHint') }}</p>
+          </nut-form-item>
+        </template>
         <template v-if="editType === 'subs'">
           <!-- source -->
           <nut-form-item
@@ -650,6 +660,7 @@ import TagPopup from "@/components/TagPopup.vue";
 import AgeKeyHelper from "@/components/AgeKeyHelper.vue";
 import DesktopPicker from "@/components/DesktopPicker.vue";
 import EditorGroupingTips from "@/components/EditorGroupingTips.vue";
+import StateSwitch from '@/components/StateSwitch.vue';
 import { Dialog, Toast } from "@nutui/nutui";
 import { storeToRefs } from "pinia";
 import {
@@ -972,6 +983,8 @@ const actionsChecked = reactive([]);
 const actionsList = reactive([]);
 const isget = ref(false);
 const form = reactive<any>({
+  enabled: true,
+  autoManage: true,
   name: "",
   displayName: "",
   form: "",
@@ -990,6 +1003,8 @@ const form = reactive<any>({
   ],
 });
 provide("form", form);
+const isRemoteForm = computed(() => form.source !== 'local' || ['localFirst', 'remoteFirst'].includes(form.mergeSources));
+watch(isRemoteForm, (remote, previous) => { if (remote && !previous) form.autoManage = true; });
 
 // 排除非动作卡片
 const ignoreList = ["Quick Setting Operator"];
@@ -1050,6 +1065,8 @@ watchEffect(() => {
   form.editorLanguage = sourceData.editorLanguage;
   form.process = newProcess;
   form.noFlow = sourceData.noFlow;
+  form.enabled = sourceData.enabled !== false;
+  form.autoManage = sourceData.autoManage !== false;
   form.subUserinfo = sourceData.subUserinfo;
   form.proxy = sourceData.proxy;
   form.tag = Array.isArray(sourceData.tag)
@@ -1824,6 +1841,8 @@ const handleEditGlobalClick = () => {
 </script>
 
 <style lang="scss" scoped>
+.availability-help { margin: 0; color: var(--comment-text-color); font-size: 12px; line-height: 1.6; text-align: left; }
+
 .page-wrapper {
   padding: 0 var(--safe-area-side) calc(v-bind("padding") + 63px)
     var(--safe-area-side);

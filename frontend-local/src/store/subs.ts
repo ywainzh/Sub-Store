@@ -3,6 +3,7 @@ import { useFilesApi } from '@/api/files';
 import { useShareApi } from '@/api/share';
 import i18n from '@/locales';
 import { useAppNotifyStore } from '@/store/appNotify';
+import { useGlobalStore } from '@/store/global';
 import { getFlowsUrlList } from '@/utils/getFlowsUrlList';
 import { isAbortError, runFrontendRequestTask } from '@/utils/requestConcurrency';
 import { isShareExpirationMode, isShareExpirationUnit } from '@/utils/share';
@@ -18,6 +19,8 @@ const fetchFlowsAbortControllers = new Set<AbortController>();
 const fetchFlowAbortControllers = new Map<string, AbortController>();
 const latestFlowRequestVersions = new Map<string, number>();
 let flowRequestSequence = 0;
+let availabilityRequestVersion = 0;
+let availabilityMutations = 0;
 
 const canFetchFlowsForCurrentPage = () => window.location.pathname === '/subs';
 
@@ -253,6 +256,8 @@ export const useSubsStore = defineStore('subsStore', {
       flows: {},
       files: [],
       shares: [],
+      subscriptionStatuses: [],
+      collectionStatuses: [],
     };
   },
   getters: {
@@ -278,6 +283,70 @@ export const useSubsStore = defineStore('subsStore', {
         shares.find(share => share.token === token),
   },
   actions: {
+    async fetchStatuses(force = false) {
+      if (!useGlobalStore().env.feature?.subscriptionAvailability) return;
+      if (availabilityMutations && !force) return;
+      const version = ++availabilityRequestVersion;
+      const res = await subsApi.getStatuses();
+      if (version !== availabilityRequestVersion) return;
+      if (res.data.status !== 'success') throw new Error('Unable to read subscription status');
+      this.subscriptionStatuses = res.data.data.subscriptions;
+      this.collectionStatuses = res.data.data.collections;
+      for (const status of this.subscriptionStatuses) {
+        const sub = this.subs.find(item => item.name === status.name);
+        if (sub) {
+          sub.enabled = status.enabled;
+          sub.autoManage = status.autoManage;
+          const source = status.sources.find(item => item.active) || status.sources[0];
+          if (source?.flow?.usage && source.flow.total != null && !sub.noFlow) {
+            const key = sub.url || sub.name;
+            const previous = this.flows[key] as Flow | undefined;
+            this.flows[key] = {
+              ...previous, status: 'success',
+              data: { ...previous?.data, ...source.flow, total: source.flow.total, usage: source.flow.usage, expires: source.flow.expires },
+            };
+          }
+        }
+      }
+      for (const status of this.collectionStatuses) {
+        const collection = this.collections.find(item => item.name === status.name);
+        if (collection) collection.enabled = status.enabled;
+      }
+    },
+    async checkAvailability(name: string) {
+      const res = await subsApi.checkAvailability(name);
+      if (res.data.status !== 'success') throw new Error('Unable to check subscription');
+      await this.fetchStatuses(true);
+      return res.data.data as SubscriptionStatus;
+    },
+    async setAvailability(type: 'sub' | 'collection', name: string, enabled: boolean) {
+      availabilityMutations++;
+      availabilityRequestVersion++;
+      try {
+        const res = await subsApi.setAvailability(type, name, enabled);
+        if (res.data.status !== 'success') throw new Error('Unable to update subscription');
+        this.setOneData(type === 'sub' ? 'subs' : 'collections', name, res.data.data);
+        if (enabled) {
+          let candidates: Sub[] = [];
+          if (type === 'sub') candidates = this.subs.filter(sub => sub.name === name);
+          else {
+            const col = this.collections.find(item => item.name === name);
+            candidates = this.subs.filter(sub => col?.subscriptions?.includes(sub.name) || sub.tag?.some(tag => col?.subscriptionTags?.includes(tag)));
+          }
+          const checks = await Promise.allSettled(candidates
+            .filter(sub => sub.enabled !== false && sub.autoManage !== false && (sub.source !== 'local' || ['localFirst', 'remoteFirst'].includes(sub.mergeSources)))
+            .map(async sub => {
+              const checked = await subsApi.checkAvailability(sub.name);
+              if (checked.data.status !== 'success') throw new Error('Unable to check subscription');
+            }));
+          if (checks.some(result => result.status === 'rejected')) throw new Error('Unable to check subscriptions');
+        }
+      } finally {
+        availabilityMutations--;
+        await this.fetchStatuses(true);
+      }
+      return type === 'sub' ? this.subscriptionStatuses.find(item => item.name === name) : this.collectionStatuses.find(item => item.name === name);
+    },
     async fetchSubsData() {
       await Promise.allSettled([
         runFrontendRequestTask(async () => {
@@ -315,6 +384,7 @@ export const useSubsStore = defineStore('subsStore', {
           }
         }, 'share.getShares'),
       ]);
+      await this.fetchStatuses();
     },
     setOneData(type: string, name: string, data: any) {
       const index = this[type].findIndex(item => item.name === name);

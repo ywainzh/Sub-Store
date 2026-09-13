@@ -1,3 +1,4 @@
+import { isSubscriptionUnavailable } from '@/utils/subscription-status';
 import {
     deleteByName,
     findByName,
@@ -165,13 +166,7 @@ async function getFile(req, res, next) {
     }
     if (
         isShareRoute &&
-        hasAnyQueryValue([
-            fileType,
-            fileSource,
-            sourceType,
-            sourceName,
-            mode,
-        ])
+        hasAnyQueryValue([fileType, fileSource, sourceType, sourceName, mode])
     ) {
         $.warn(`分享链接禁止使用文件来源配置覆盖: ${name}`);
         failed(
@@ -389,6 +384,7 @@ async function getFile(req, res, next) {
                 }),
             );
         } catch (err) {
+            if (isSubscriptionUnavailable(err)) return failed(res, err, 409);
             $.notify(
                 `🌍 Sub-Store 下载文件失败`,
                 `❌ 无法下载文件：${name}！`,

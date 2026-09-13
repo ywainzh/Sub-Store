@@ -221,9 +221,9 @@ describe('download routes', function () {
         ({ default: $ } = require('@/core/app'));
         openApi = require('@/vendor/open-api');
         ({ default: registerDownloadRoutes } = require('@/restful/download'));
-        ({ default: registerSubscriptionRoutes } = require(
-            '@/restful/subscriptions'
-        ));
+        ({
+            default: registerSubscriptionRoutes,
+        } = require('@/restful/subscriptions'));
         ageUtils = require('@/utils/age');
 
         originalRead = $.read.bind($);
@@ -359,6 +359,7 @@ describe('download routes', function () {
                 state[SUBS_KEY][0] = {
                     name: 'local-vless',
                     source: 'remote',
+                    autoManage: false, // Isolate the legacy validCheck/noFlow behavior from availability checks.
                     url: viaFile ? '/api/file/nested-flow' : sourceUrl,
                 };
                 if (viaFile) {
@@ -366,6 +367,7 @@ describe('download routes', function () {
                         {
                             name: 'nested-flow',
                             source: 'remote',
+                            autoManage: false, // Isolate the legacy validCheck/noFlow behavior from availability checks.
                             url: sourceUrl,
                         },
                     ];
@@ -404,9 +406,7 @@ describe('download routes', function () {
                 });
 
                 expect(res.statusCode).to.equal(200);
-                expect(requestedUrls).to.deep.equal([
-                    sourceUrl.split('#')[0],
-                ]);
+                expect(requestedUrls).to.deep.equal([sourceUrl.split('#')[0]]);
             }
         } finally {
             openApi.HTTP = originalHTTP;
@@ -428,11 +428,13 @@ describe('download routes', function () {
                     {
                         name: 'local-vless',
                         source: 'remote',
+                        autoManage: false, // Isolate the legacy validCheck/noFlow behavior from availability checks.
                         url: '/api/file/processor-flow',
                     },
                     {
                         name: 'processor-sub',
                         source: 'remote',
+                        autoManage: false, // Isolate the legacy validCheck/noFlow behavior from availability checks.
                         url: `${nestedUrl}#validCheck&noCache`,
                     },
                 ];
@@ -506,6 +508,7 @@ describe('download routes', function () {
             state[SUBS_KEY][0] = {
                 name: 'local-vless',
                 source: 'remote',
+                autoManage: false, // Isolate the legacy validCheck/noFlow behavior from availability checks.
                 url: [
                     'https://example.com/first#validCheck&noFlow=false',
                     'https://example.com/second',
@@ -1037,5 +1040,4 @@ describe('download routes', function () {
         expect(decrypted).to.include('VLESS WS');
         await expectDecryptFailure(res.sent, sourcePair['age-secret-key']);
     });
-
 });

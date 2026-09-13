@@ -28,10 +28,33 @@ import $ from '@/core/app';
 import { formatDateTime } from '@/utils';
 import { maskAgeSecretInUrl, normalizeAgePublicKeyConfig } from '@/utils/age';
 import { normalizeEditorLanguageConfig } from '@/utils/editor-language';
+import {
+    checkSubscription,
+    getAllSubscriptionStatuses,
+    normalizeAvailabilityConfig,
+    reconcileSubscriptionStatuses,
+    availableSubscriptionUrls,
+} from '@/utils/subscription-status';
 
 if (!$.read(SUBS_KEY)) $.write({}, SUBS_KEY);
 
 export default function register($app) {
+    $app.get('/api/subs/status', (req, res) =>
+        success(res, getAllSubscriptionStatuses()),
+    );
+    $app.route('/api/sub/:name/check').post(async (req, res) => {
+        try {
+            success(
+                res,
+                await checkSubscription(req.params.name, {
+                    force: true,
+                    manual: true,
+                }),
+            );
+        } catch (error) {
+            failed(res, error, error.code === 'RESOURCE_NOT_FOUND' ? 404 : 400);
+        }
+    });
     $app.get('/api/sub/flow/:name', getFlowInfo);
 
     $app.route('/api/sub/:name')
@@ -65,6 +88,7 @@ async function getFlowInfo(req, res) {
         );
         return;
     }
+    if (!url) await checkSubscription(sub);
     if (req.query.noFlow || sub.noFlow) {
         failed(
             res,
@@ -135,7 +159,7 @@ async function getFlowInfo(req, res) {
     }
     try {
         url =
-            `${url || sub.url}`
+            `${url || availableSubscriptionUrls(sub)[0] || sub.url}`
                 .split(/[\r\n]+/)
                 .map((i) => i.trim())
                 .filter((i) => i.length)?.[0] || '';
@@ -255,7 +279,11 @@ function createSubscription(req, res) {
         const sub = createSubscriptionItem(req.body);
         success(res, sub, 201);
     } catch (error) {
-        failed(res, error);
+        failed(
+            res,
+            error,
+            error.code === 'INVALID_AVAILABILITY_CONFIG' ? 400 : 500,
+        );
     }
 }
 
@@ -264,8 +292,8 @@ function getSubscription(req, res) {
     let { raw } = req.query;
     const allSubs = $.read(SUBS_KEY);
     const sub = findByName(allSubs, name);
-    delete sub.subscriptions;
     if (sub) {
+        delete sub.subscriptions;
         if (raw) {
             res.set('content-type', 'application/json')
                 .set('access-control-expose-headers', 'content-disposition')
@@ -305,6 +333,11 @@ function updateSubscription(req, res) {
             ...oldSub,
             ...sub,
         };
+        try {
+            normalizeAvailabilityConfig(newSub);
+        } catch (error) {
+            return failed(res, error, 400);
+        }
         normalizeAgePublicKeyConfig(newSub);
         normalizeEditorLanguageConfig(newSub);
         $.info(`正在更新订阅： ${name}`);
@@ -346,6 +379,7 @@ function updateSubscription(req, res) {
         }
         updateByName(allSubs, name, newSub);
         $.write(allSubs, SUBS_KEY);
+        reconcileSubscriptionStatuses(oldSub, newSub);
         success(res, newSub);
     } else {
         failed(
@@ -382,13 +416,19 @@ function replaceSubscriptions(req, res) {
     try {
         const allSubs = req.body;
         allSubs.forEach((sub) => {
+            normalizeAvailabilityConfig(sub);
             normalizeAgePublicKeyConfig(sub);
             normalizeEditorLanguageConfig(sub);
         });
         $.write(allSubs, SUBS_KEY);
+        reconcileSubscriptionStatuses();
         success(res);
     } catch (error) {
-        failed(res, error);
+        failed(
+            res,
+            error,
+            error.code === 'INVALID_AVAILABILITY_CONFIG' ? 400 : 500,
+        );
     }
 }
 
@@ -396,6 +436,7 @@ function createSubscriptionItem(rawSub) {
     const sub = {
         ...rawSub,
     };
+    normalizeAvailabilityConfig(sub);
     normalizeAgePublicKeyConfig(sub);
     normalizeEditorLanguageConfig(sub);
     delete sub.subscriptions;
@@ -429,6 +470,7 @@ function deleteSubscriptionItem(name) {
     }
     deleteByName(allSubs, name);
     $.write(allSubs, SUBS_KEY);
+    reconcileSubscriptionStatuses();
 
     const allCols = $.read(COLLECTIONS_KEY) || [];
     for (const collection of allCols) {
