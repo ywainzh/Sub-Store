@@ -267,7 +267,9 @@ async function runWorker(config, dependencies = {}) {
             validateManifest(JSON.parse(manifestBytes), job.tag);
             writeJob('preparing');
             if (fs.existsSync(targetDirectory)) throw new Error('CANDIDATE_ALREADY_EXISTS');
-            fs.renameSync(candidate, targetDirectory);
+            // systemd mounts the writable work and program directories separately.
+            // Copy before stopping the app; rollback removes any incomplete target.
+            fs.cpSync(candidate, targetDirectory, { recursive: true, force: false, errorOnExist: true });
         }
         const desiredSchema = job.restoreData ? validateSnapshot(snapshotDirectory).dataSchema : readJson(path.join(config.dataDirectory, 'sub-store.json')).schemaVersion;
         if ((job.restoreData && validateSnapshot(snapshotDirectory).tag !== job.tag) || !canReadData(targetManifest, desiredSchema)) throw new Error('INCOMPATIBLE_DATA_SCHEMA');

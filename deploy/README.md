@@ -7,7 +7,7 @@
 所有开发在 `release`；`master` 保留。旧 `build` 工作流已停用并从 `release` 移除，`release` 禁止强推和删除，对管理员也生效，允许正常直接提交。
 
 1. 在 `release` 完成改动，只暂存本次修改的文件，提交并正常推送。
-2. 创建全新的正式 tag，例如 `git tag -a v0.1.2 -m "Sub-Store v0.1.2"`，再推送该 tag。
+2. 创建全新的正式 tag，例如 `git tag -a v0.1.3 -m "Sub-Store v0.1.3"`，再推送该 tag。
 3. 等待 `build & release server tarball` 完成。手动触发时同样必须填写已存在的 `vX.Y.Z` tag。
 
 流程验证 tag 对应提交属于 `release` 历史，检出该提交，使用 Node 24.15.0、pnpm 11.0.9 和两个 `pnpm-lock.yaml` 执行冻结安装。后端测试、管理/部署测试、前端语言检查、类型检查、构建及完整包启动检查全部通过后才发布。已有 Release（包括草稿）不可覆盖；失败的草稿须检查原因后人工处理，不能重用已正式发布的版本号。
@@ -70,7 +70,7 @@ sub-store-bootstrap/
 ```bash
 sudo install -d -m 0750 /etc/sub-store
 sudo install -o root -g root -m 0600 /home/ubuntu/sub-store-bootstrap/auth.json /etc/sub-store/auth.json
-sudo node /home/ubuntu/sub-store-bootstrap/deploy/install.cjs v0.1.1 https://sub-store.0222999.xyz
+sudo node /home/ubuntu/sub-store-bootstrap/deploy/install.cjs v0.1.3 https://sub-store.0222999.xyz
 ```
 
 安装器从固定公开仓库下载并检查 SHA-256、USTAR 路径、包内外清单与兼容性，拒绝链接、设备文件和越界路径。它创建专用用户，将程序、数据与认证分离，安装 systemd 服务。迁移期间 Nginx 暂时封闭 `/api` 和 `/download`，分享入口保持独立 token 校验。停止旧服务取得一致快照后切换新版本，通过健康、匿名管理拒绝和现有分享检查后才重新开放管理入口。
@@ -136,6 +136,10 @@ v0.1.2 起，单条与组合默认启用，远程订阅默认自动检测到期�
 卡片改变状态后，客户端下一次更新订阅才会同步。全部来源停用返回 `409` 与明确原因；不要用清空缓存或 `noFlow` 查询参数尝试解除停用，应续费／重置后重新检测，或在编辑页关闭自动检测再手动启用。接口说明见 [订阅导入手册](../docs/SUB-IMPORT.md)。
 
 ### 部署故障
+
+v0.1.1／v0.1.2 附带的部署助手在 systemd 的 `ProtectSystem=strict` 环境中，可能因工作目录与程序目录处于不同挂载点而在准备程序时失败（`EXDEV`，网页显示 `DEPLOYMENT_FAILED`）。v0.1.3 改为先完整复制已校验程序，再停止服务并切换；复制失败会清理候选程序并继续运行当前版本。
+
+已安装旧助手时，由 root 从校验通过的 v0.1.3 或更新发布包取得 `deploy/worker.cjs`，先更新 `/usr/local/lib/sub-store/deploy/worker.cjs`（root 所有、0644 权限），再通过网页升级。更新前确认没有进行中的部署；助手文件以同目录临时文件和原子替换方式更新。该文件独立于 `/opt/sub-store/current`，应用回退不会覆盖修复后的助手。
 
 ```bash
 sudo systemctl status sub-store sub-store-deploy.path

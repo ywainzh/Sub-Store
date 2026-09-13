@@ -75,6 +75,45 @@ test('successful upgrade retains exactly two programs, one consistent data snaps
     assert.equal(fs.readFileSync(path.join(f.root, 'auth.json'), 'utf8'), 'independent authentication state');
 });
 
+test('upgrade succeeds when the sandbox puts work and releases on separate mounts', async t => {
+    const f = fixture(t); f.submit();
+    const rename = fs.renameSync;
+    t.mock.method(fs, 'renameSync', (source, destination) => {
+        if (path.basename(source) === 'candidate' && path.dirname(destination) === f.config.releasesDirectory) {
+            throw Object.assign(new Error('cross-device link not permitted'), { code: 'EXDEV' });
+        }
+        return rename(source, destination);
+    });
+    const result = await runWorker(f.config, f.dependencies);
+    assert.equal(result.phase, 'succeeded');
+    assert.equal(fs.realpathSync(f.config.currentLink), path.join(f.config.releasesDirectory, 'v0.2.0'));
+    assert.equal(fs.readFileSync(path.join(f.config.currentLink, 'backend/dist/sub-store.bundle.js'), 'utf8'), '// test application');
+    assert.equal(f.data().marker, 'original');
+    assert.deepEqual(fs.readdirSync(f.config.releasesDirectory).sort(), ['v0.1.0', 'v0.2.0']);
+    assert.deepEqual(fs.readdirSync(path.join(f.config.deployDirectory, 'work')), []);
+});
+
+test('an incomplete program copy is removed without stopping the current application', async t => {
+    const f = fixture(t); f.submit();
+    const copy = fs.cpSync;
+    const candidate = path.join(f.config.releasesDirectory, 'v0.2.0');
+    let serviceCalls = 0;
+    t.mock.method(fs, 'cpSync', (source, destination, options) => {
+        if (destination !== candidate) return copy(source, destination, options);
+        fs.mkdirSync(destination);
+        fs.writeFileSync(path.join(destination, 'partial.txt'), 'incomplete program');
+        throw Object.assign(new Error('no space left on device'), { code: 'ENOSPC' });
+    });
+    const result = await runWorker(f.config, { ...f.dependencies, service: async () => { serviceCalls++; } });
+    assert.equal(result.phase, 'failed');
+    assert.equal(serviceCalls, 0);
+    assert.equal(f.state().current, 'v0.1.0');
+    assert.equal(fs.realpathSync(f.config.currentLink), path.join(f.config.releasesDirectory, 'v0.1.0'));
+    assert.equal(f.data().marker, 'original');
+    assert.deepEqual(fs.readdirSync(f.config.releasesDirectory).sort(), ['v0.0.9', 'v0.1.0']);
+    assert.deepEqual(fs.readdirSync(path.join(f.config.deployDirectory, 'work')), []);
+});
+
 test('local previous release can roll back with GitHub offline and preserve newest subscriptions', async t => {
     const f = fixture(t); f.submit(); await runWorker(f.config, f.dependencies);
     atomicJson(path.join(f.config.dataDirectory, 'sub-store.json'), { ...f.data(), marker: 'newest' });
