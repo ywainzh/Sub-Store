@@ -8,6 +8,7 @@
     "dev": "vite --host",
     "dev:production": "vite --host --mode production",
     "build": "vue-tsc --noEmit && vite build",
+    "test": "node --test scripts/*.test.cjs",
     "check:locales": "node scripts/check-locales.mjs",
     "preview": "vite preview --host",
     "changelog": "conventional-changelog -p cli -i CHANGELOG.md -s"

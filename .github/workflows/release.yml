@@ -65,8 +65,9 @@ jobs:
           node --test test/management/*.test.cjs
       - name: Build backend
         run: pnpm --dir backend bundle:esbuild
-      - name: Frontend locale, type and production checks
+      - name: Frontend regression, locale, type and production checks
         run: |
+          pnpm --dir frontend-local test
           pnpm --dir frontend-local check:locales
           pnpm --dir frontend-local build
       - name: Package and start the exact release

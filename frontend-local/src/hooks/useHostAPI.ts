@@ -85,8 +85,8 @@ export const useHostAPI = () => {
     return apis.value.find(api => api.name === currentName.value);
   });
   const currentUrl = computed(() => {
-    const url = currentApi.value?.url ?? defaultAPI
-    return url.startsWith('/') ? `${window.location.origin}${url}` : url;
+    const url = currentApi.value?.url ?? defaultAPI;
+    return !url || url.startsWith('/') ? `${window.location.origin}${url}` : url;
   });
   const currentShareBaseUrl = computed(() => {
     return normalizeShareBaseUrl(currentApi.value?.shareBaseUrl);

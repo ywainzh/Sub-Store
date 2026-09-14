@@ -62,11 +62,12 @@ try {
             env: {},
         };
         const env = eval('process.env');
-        // Only presentation settings belong in this API. Never expose credentials,
+        // Only presentation and public routing settings belong in this API. Never expose credentials,
         // auth/deployment paths, command arguments or arbitrary environment values.
         for (const key of [
             'SUB_STORE_BACKEND_CUSTOM_NAME',
             'SUB_STORE_DOCKER',
+            'SUB_STORE_FRONTEND_BACKEND_PATH',
         ]) {
             if (env[key] !== undefined) {
                 meta.node.env[key] = env[key];

@@ -304,6 +304,9 @@ const onClickCopyLink = async () => {
     return;
   }
   const url = getShareUrl();
+  if (!url) {
+    return;
+  }
   try {
     await copyText(url);
     showNotify({ title: t("sharePage.copyShare.succeedNotify") });
@@ -380,6 +383,9 @@ const onClickPreviews = () => {
     return;
   }
   const url = getShareUrl();
+  if (!url) {
+    return;
+  }
 
   Dialog({
     title: t("subPage.previewTitle"),

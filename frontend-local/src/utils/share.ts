@@ -452,19 +452,23 @@ export const getSharePublicUrl = ({
 }: {
   host: string;
   shareBaseUrl?: string | null;
-  secretPath: string;
+  secretPath?: string | null;
   type: 'sub' | 'col' | 'file';
   name: string;
   token: string;
 }) => {
   const normalizedShareBaseUrl = normalizeShareBaseUrl(shareBaseUrl);
+  const normalizedHost = normalizeShareBaseUrl(host);
+  const normalizedSecretPath = normalizeShareBaseUrl(secretPath);
 
-  if (!normalizedShareBaseUrl && !secretPath.startsWith('/')) {
+  if (!normalizedShareBaseUrl && normalizedSecretPath && !normalizedSecretPath.startsWith('/')) {
     throw new Error('INVALID_SECRET_PATH');
   }
 
   const publicHost = normalizedShareBaseUrl
-    || (host.endsWith(secretPath) ? host.slice(0, -secretPath.length) : host);
+    || (normalizedSecretPath && normalizedHost.endsWith(normalizedSecretPath)
+      ? normalizedHost.slice(0, -normalizedSecretPath.length)
+      : normalizedHost);
 
   return `${publicHost}/share/${type}/${encodeURIComponent(name)}?token=${encodeURIComponent(token)}`;
 };
